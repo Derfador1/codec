@@ -97,7 +97,7 @@ struct meditrik *make_meditrik(void)
 int hexDump(void *buf, int len);
 int printtofile(void *buf, int len);
 int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt);
-int field_check(unsigned int *type_pt, unsigned char * buf);
+int field_check(unsigned int *type_pt, unsigned char * buf, int count);
 
 
 int main(void)
@@ -106,7 +106,7 @@ int main(void)
 
 	unsigned int *type_pt = malloc(sizeof(*type_pt));
 
-	int descrip = open("command_glucose.pcap", O_RDONLY);
+	int descrip = open("hello.pcap", O_RDONLY);
 
 	if (descrip == -1)
 	{
@@ -121,8 +121,6 @@ int main(void)
 	count = read(descrip, buf, SIZE);
 
 	printf("%d", count);
-
-	//int c = 106; //change with count
 	
 	hexDump(buf, count);
 
@@ -130,9 +128,7 @@ int main(void)
 
 	bit_seperation(stuff, buf, type_pt);
 
-	//printf("%u\n", *type_pt);
-
-	field_check(type_pt, buf);
+	field_check(type_pt, buf, count);
 
 	printtofile(buf, count);
 
@@ -252,7 +248,7 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 }
 
 
-int field_check(unsigned int *type_pt, unsigned char * buf)
+int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 {
 	if (*type_pt == 0)
 	{
@@ -272,10 +268,40 @@ int field_check(unsigned int *type_pt, unsigned char * buf)
 		}
 		else if (byte_start == 1)
 		{
-			unsigned int value = buf[96];
-			value <<= 8;
-			value += buf[97];
-			printf("Glucose set to: %d\n", value);
+			unsigned int glucose = buf[96];
+			glucose <<= 8;
+			glucose += buf[97];
+			printf("Glucose set to: %d\n", glucose);
+		}
+		else if (byte_start == 2)
+		{
+			printf("Request GPS packet\n");
+		}
+		else if (byte_start == 3)
+		{
+			unsigned int capsaicin = buf[96];
+			capsaicin <<= 8;
+			capsaicin += buf[97];
+			printf("Capsaicin set to: %d\n", capsaicin);
+		}
+		else if (byte_start == 4)
+		{
+			printf("Reserved, GET OUT OF HERE\n");
+		}
+		else if (byte_start == 5)
+		{
+			unsigned int omorfine = buf[96];
+			omorfine <<= 8;
+			omorfine += buf[97];
+			printf("Omorfine set to: %d\n", omorfine);
+		}
+		else if (byte_start == 6)
+		{
+			printf("Reserved, GET OUT OF HERE\n");
+		}
+		else if (byte_start == 7)
+		{
+			printf("Please re-send the packet! WHY CANT YOU PACKET RIGHT\n");
 		}
 	}
 	else if (*type_pt == 2)
@@ -284,7 +310,15 @@ int field_check(unsigned int *type_pt, unsigned char * buf)
 	}
 	else if (*type_pt == 3)
 	{
-		printf("%c\n", buf[84]);
+		printf("Type - Message: ");
+
+		int i = 0;
+
+		for (i = 82 + (12); i < count; i++)
+		{
+			printf("%c", buf[i]);
+		}
+		printf("\n");
 	}
 
 	return 0;
