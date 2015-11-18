@@ -222,6 +222,13 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	printf("Type: %d\n", medi->type);
 	*type_pt = medi-> type;
 
+	//total length
+	unsigned char byte_length_starter = buf[84];
+	byte_length_starter <<= 8;
+	byte_length_starter += buf[85];
+	medi->total_length = byte_length_starter;
+	printf("Total Length: %d\n", medi->total_length);
+
 	//source device id bitmath
 	unsigned int byte_start_source = buf[86];
 	byte_start_source <<= 8;
@@ -252,7 +259,7 @@ int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 {
 	if (*type_pt == 0)
 	{
-		printf("GET STATUS(0)\n");
+		printf("Status of Device\n");
 	}
 	else if (*type_pt == 1)
 	{
@@ -306,7 +313,7 @@ int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 	}
 	else if (*type_pt == 2)
 	{
-		printf("%c\n", buf[84]);
+		//gps data
 	}
 	else if (*type_pt == 3)
 	{
