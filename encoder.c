@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #define SIZE 255
 
-int binary_conversion(unsigned int num);
+void dec_to_hex(unsigned int value, char * buf);
 
 struct meditrik {
 	//check mask
@@ -24,6 +25,13 @@ union bytes {
 
 int main(void)
 {
+	int j;
+
+	char *buf;
+
+	buf = malloc(13);
+
+	memset(buf, '\0', 13);
 
 	union bytes byte;
 
@@ -31,62 +39,61 @@ int main(void)
 
 	byte.medi.version = 1;	
 	byte.medi.seq_id = 81;
-	byte.medi.type = 3;
-	byte.medi.total_length = 24;
+	byte.medi.type = 1;
+	byte.medi.total_length = 18;
 	byte.medi.source_device_id = 7890;
 	byte.medi.dest_device_id = 1234;
-
-
-	printf("id: %032u\n", binary_conversion(byte.medi.source_device_id));
-	printf("dest id: %032u\n", binary_conversion(byte.medi.source_device_id));
-
-	printf("%.4d%.9d%.3d%.16d", binary_conversion(byte.medi.version), binary_conversion(byte.medi.seq_id), binary_conversion(byte.medi.type), binary_conversion(byte.medi.total_length));
-	printf("\n");
 	
-	/*
-	if (argc >= 1)
+
+	dec_to_hex(byte.medi.source_device_id, buf);
+
+	FILE *fp;
+
+	fp = fopen("test.pcap", "w+");
+
+	for (j = 0; j < 12; j++)
 	{
+		fprintf(fp ,"%c", buf[j]);
+	}
 
-		char buff[SIZE];
-		char *line;
-		FILE *fp;
-		fp = fopen(argv[1], "r");
-
-		while (1)
-		{
-		   	memset(buff, '\0', sizeof(buff));
-		    	line = fgets(buff , SIZE , fp);
-			if (!line) {
-				break;
-			}
-		
-	
-		fclose(fp);
-		//use fgets
-		char buf[255];
-		size_t nbytes;
-		size_t bytes_read;
-		FILE *fp;
-
-		fp = fopen(argv[1], "r");
-
-		nbytes = 1;
-		bytes_read = read(fp, buf, nbytes);
-
-		printf("bytes_read: %zd\n", bytes_read);
-		
+	/*
+	for (j = 0; j < 12; j++)
+	{
+		printf("%c", buf[j]);
 	}
 	*/
+
+	fclose(fp);
+
+	free(buf);
+	
 }
 
-int binary_conversion (unsigned int num)
+//convert to string and print out string with for loop buf[i]
+void dec_to_hex(unsigned int value, char * buf)
 {
-	if (num == 0)
+	//long int remainder;
+	long int quotient;
+	int i = 0, temp;
+
+	quotient = value;
+
+	while (quotient != 0)
 	{
-		return 0;
+		temp = quotient % 16;
+
+		/*
+		if(temp < 10)
+			temp = temp + 48;
+		else
+			temp = temp + 55;
+		*/
+
+		buf[i++] = temp;
+
+		quotient = quotient/16;
 	}
-	else
-	{
-		return (num % 2) + 10 * binary_conversion(num/2);
-	}
+
+	//return 0;
+	
 }
