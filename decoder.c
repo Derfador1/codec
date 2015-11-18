@@ -73,7 +73,7 @@ struct udp{
 	unsigned int checksum : 16;
 };
 
-struct meditrik {
+struct meditrik{
 	unsigned int version : 4;
 	unsigned int seq_id : 9;
 	unsigned int type : 3;
@@ -96,15 +96,17 @@ struct meditrik *make_meditrik(void)
 
 int hexDump(void *buf, int len);
 int printtofile(void *buf, int len);
-int bit_seperation(struct meditrik *medi, unsigned char * buf);
+int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt);
+int field_check(unsigned int *type_pt, unsigned char * buf);
 
 
 int main(void)
 {
 	int count = 0;
 
+	unsigned int *type_pt = malloc(sizeof(*type_pt));
 
-	int descrip = open("hello.pcap", O_RDONLY);
+	int descrip = open("command_glucose.pcap", O_RDONLY);
 
 	if (descrip == -1)
 	{
@@ -120,80 +122,25 @@ int main(void)
 
 	printf("%d", count);
 
-	int c = 106;
+	//int c = 106; //change with count
 	
-	hexDump(buf, c);
-	
-	/*
-	struct meditrik medi;
+	hexDump(buf, count);
 
-	//version bitmath
-
-	unsigned int byte_start = buf[82];
-
-	byte_start >>= 4;
-	
-	medi.version = byte_start;
-
-	printf("Version: %d\n", medi.version);
-
-	//sequence_id bitmath
-
-	byte_start = buf[82];
-
-	byte_start &= 15;
-
-	byte_start <<= 5;
-
-	unsigned int byte_start2 = buf[83];
-	
-	byte_start2 >>= 3;
-
-	byte_start += byte_start2;
-
-	medi.seq_id = byte_start;
-
-	printf("Sequence: %d\n", medi.seq_id);
-
-	//type bitmath
-
-	byte_start = buf[83];
-
-	byte_start &= 7;
-	
-	medi.type = byte_start;
-
-	printf("Type: %d\n", medi.type);
-
-	//source device id bitmath
-
-	unsigned int byte_start_source = buf[86];
-
-	byte_start_source <<= 8;
-
-	byte_start_source += buf[87];
-	
-	byte_start_source <<= 8;
-
-	byte_start_source += buf[88];
-	
-	byte_start_source <<= 8;
-	
-	byte_start_source += buf[89];
-
-	medi.source_device_id = byte_start_source;
-
-	printf("Source Device: %d\n", medi.source_device_id);
-	*/
 	struct meditrik *stuff = make_meditrik();
 
-	bit_seperation(stuff, buf);
+	bit_seperation(stuff, buf, type_pt);
 
-	printtofile(buf, c);
+	//printf("%u\n", *type_pt);
+
+	field_check(type_pt, buf);
+
+	printtofile(buf, count);
 
 	free(buf);
 
 	free(stuff);
+	
+	free(type_pt);
 
 	close(descrip);
 }
@@ -254,63 +201,91 @@ int printtofile(void * buf, int len)
 }
 
 
-int bit_seperation(struct meditrik *medi, unsigned char * buf)
+int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt)
 {
 	//version bitmath
-
 	unsigned int byte_start = buf[82];
-
 	byte_start >>= 4;
-	
 	medi->version = byte_start;
-
 	printf("Version: %d\n", medi->version);
 
 	//sequence_id bitmath
-
 	byte_start = buf[82];
-
 	byte_start &= 15;
-
 	byte_start <<= 5;
-
 	unsigned int byte_start2 = buf[83];
-	
 	byte_start2 >>= 3;
-
 	byte_start += byte_start2;
-
 	medi->seq_id = byte_start;
-
 	printf("Sequence: %d\n", medi->seq_id);
 
 	//type bitmath
-
-	byte_start = buf[83];
-
-	byte_start &= 7;
-	
-	medi->type = byte_start;
-
+	unsigned char byte_starter = buf[83];
+	byte_starter &= 7;
+	medi->type = byte_starter;
 	printf("Type: %d\n", medi->type);
+	*type_pt = medi-> type;
 
 	//source device id bitmath
-
 	unsigned int byte_start_source = buf[86];
-
 	byte_start_source <<= 8;
-
 	byte_start_source += buf[87];
-	
 	byte_start_source <<= 8;
-
 	byte_start_source += buf[88];
-	
 	byte_start_source <<= 8;
-	
 	byte_start_source += buf[89];
-
 	medi->source_device_id = byte_start_source;
+	printf("Source Device: %d\n", medi->source_device_id);
+
+	//dest device id bitmath
+	unsigned int byte_start_dest = buf[90];
+	byte_start_dest <<= 8;
+	byte_start_dest += buf[91];
+	byte_start_dest <<= 8;
+	byte_start_dest += buf[92];
+	byte_start_dest <<= 8;
+	byte_start_dest += buf[93];
+	medi->dest_device_id = byte_start_dest;
+	printf("Destination Device: %d\n", medi->dest_device_id);
+
+	return 0;
+}
+
+
+int field_check(unsigned int *type_pt, unsigned char * buf)
+{
+	if (*type_pt == 0)
+	{
+		printf("GET STATUS(0)\n");
+	}
+	else if (*type_pt == 1)
+	{
+		unsigned int byte_start = buf[94];
+
+		byte_start <<= 8;
+
+		byte_start += buf[95];
+
+		if (byte_start == 0)
+		{
+			printf("GET STATUS(0)\n");
+		}
+		else if (byte_start == 1)
+		{
+			unsigned int value = buf[96];
+			value <<= 8;
+			value += buf[97];
+			printf("Glucose set to: %d\n", value);
+		}
+	}
+	else if (*type_pt == 2)
+	{
+		printf("%c\n", buf[84]);
+	}
+	else if (*type_pt == 3)
+	{
+		printf("%c\n", buf[84]);
+	}
 
 	return 0;
 }
