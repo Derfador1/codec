@@ -1,7 +1,3 @@
-// fp = open()
-//read()
-
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -12,8 +8,12 @@
 #define SIZE 255
 
 
-int hexDump(void *buf, int len);
-int printtofile(void *buf, int len);
+
+
+//pull info from bits
+//ver = >> 4
+//type = >> 5
+//seq_id = >> 3 , and by mask
 
 
 //function to check values based on dec number
@@ -83,10 +83,26 @@ struct meditrik {
 
 };
 
+struct meditrik *make_meditrik(void)
+{
+	struct meditrik *meditrik = malloc(sizeof(struct meditrik));
+	if(!meditrik) {
+		return NULL;
+	}
+
+	return meditrik;
+}
+
+
+int hexDump(void *buf, int len);
+int printtofile(void *buf, int len);
+int bit_seperation(struct meditrik *medi, unsigned char * buf);
 
 
 int main(void)
 {
+	int count = 0;
+
 
 	int descrip = open("hello.pcap", O_RDONLY);
 
@@ -100,18 +116,86 @@ int main(void)
 
 	buf = malloc(SIZE);
 
-	read(descrip, buf, 255);
+	count = read(descrip, buf, SIZE);
+
+	printf("%d", count);
 
 	int c = 106;
 	
 	hexDump(buf, c);
+	
+	/*
+	struct meditrik medi;
+
+	//version bitmath
+
+	unsigned int byte_start = buf[82];
+
+	byte_start >>= 4;
+	
+	medi.version = byte_start;
+
+	printf("Version: %d\n", medi.version);
+
+	//sequence_id bitmath
+
+	byte_start = buf[82];
+
+	byte_start &= 15;
+
+	byte_start <<= 5;
+
+	unsigned int byte_start2 = buf[83];
+	
+	byte_start2 >>= 3;
+
+	byte_start += byte_start2;
+
+	medi.seq_id = byte_start;
+
+	printf("Sequence: %d\n", medi.seq_id);
+
+	//type bitmath
+
+	byte_start = buf[83];
+
+	byte_start &= 7;
+	
+	medi.type = byte_start;
+
+	printf("Type: %d\n", medi.type);
+
+	//source device id bitmath
+
+	unsigned int byte_start_source = buf[86];
+
+	byte_start_source <<= 8;
+
+	byte_start_source += buf[87];
+	
+	byte_start_source <<= 8;
+
+	byte_start_source += buf[88];
+	
+	byte_start_source <<= 8;
+	
+	byte_start_source += buf[89];
+
+	medi.source_device_id = byte_start_source;
+
+	printf("Source Device: %d\n", medi.source_device_id);
+	*/
+	struct meditrik *stuff = make_meditrik();
+
+	bit_seperation(stuff, buf);
 
 	printtofile(buf, c);
 
 	free(buf);
 
-	close(descrip);
+	free(stuff);
 
+	close(descrip);
 }
 
 int hexDump(void *buf, int len)
@@ -167,4 +251,66 @@ int printtofile(void * buf, int len)
 	fclose(fp);
 
 	return 1;
+}
+
+
+int bit_seperation(struct meditrik *medi, unsigned char * buf)
+{
+	//version bitmath
+
+	unsigned int byte_start = buf[82];
+
+	byte_start >>= 4;
+	
+	medi->version = byte_start;
+
+	printf("Version: %d\n", medi->version);
+
+	//sequence_id bitmath
+
+	byte_start = buf[82];
+
+	byte_start &= 15;
+
+	byte_start <<= 5;
+
+	unsigned int byte_start2 = buf[83];
+	
+	byte_start2 >>= 3;
+
+	byte_start += byte_start2;
+
+	medi->seq_id = byte_start;
+
+	printf("Sequence: %d\n", medi->seq_id);
+
+	//type bitmath
+
+	byte_start = buf[83];
+
+	byte_start &= 7;
+	
+	medi->type = byte_start;
+
+	printf("Type: %d\n", medi->type);
+
+	//source device id bitmath
+
+	unsigned int byte_start_source = buf[86];
+
+	byte_start_source <<= 8;
+
+	byte_start_source += buf[87];
+	
+	byte_start_source <<= 8;
+
+	byte_start_source += buf[88];
+	
+	byte_start_source <<= 8;
+	
+	byte_start_source += buf[89];
+
+	medi->source_device_id = byte_start_source;
+
+	return 0;
 }
