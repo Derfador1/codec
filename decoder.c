@@ -100,13 +100,18 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 int field_check(unsigned int *type_pt, unsigned char * buf, int count);
 
 
-int main(void)
+int main(int argc, char * argv[])
 {
+	if (argc == 1)
+	{
+		printf("whore\n");
+	}
+
 	int count = 0;
 
 	unsigned int *type_pt = malloc(sizeof(*type_pt));
 
-	int descrip = open("hello.pcap", O_RDONLY);
+	int descrip = open(argv[1], O_RDONLY);
 
 	if (descrip == -1)
 	{
@@ -130,7 +135,7 @@ int main(void)
 
 	field_check(type_pt, buf, count);
 
-	printtofile(buf, count);
+	//printtofile(buf, count);
 
 	free(buf);
 
@@ -143,30 +148,30 @@ int main(void)
 
 int hexDump(void *buf, int len)
 {
-	int count = 0;
+	int counter = 0;
 	int start = 82;
 
 	unsigned char * buffer = buf;	
 
-	for (count = 0; count < len; count++)
+	for (counter = 0; counter < len; counter++)
 	{
-		if (count % 16 == 0) {
+		if (counter % 16 == 0) {
 			printf("\n");
 		}
-		else if (count % 8 == 0) { 
+		else if (counter % 8 == 0) { 
 			printf(" ");
 		}
-		printf ("%02x ", buffer[count]);
+		printf ("%02x ", buffer[counter]);
 	}
 	printf("\n\n");
 
 
-	for (count = start; count < len; count++)
+	for (counter = start; counter < len; counter++)
 	{
-		if ((count % 16) == 0) {
+		if ((counter % 16) == 0) {
 			printf("\n");
 		}
-		printf ("%02x ", buffer[count]);
+		printf ("%02x ", buffer[counter]);
 	}
 	printf("\n\n");
 
@@ -199,11 +204,15 @@ int printtofile(void * buf, int len)
 
 int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt)
 {
+	FILE *write;
+	write = fopen("decoded.txt", "w");
+
 	//version bitmath
 	unsigned int byte_start = buf[82];
 	byte_start >>= 4;
 	medi->version = byte_start;
 	printf("Version: %d\n", medi->version);
+	fprintf(write, "Version: %d\n", medi->version);
 
 	//sequence_id bitmath
 	byte_start = buf[82];
@@ -213,13 +222,15 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_start2 >>= 3;
 	byte_start += byte_start2;
 	medi->seq_id = byte_start;
-	printf("Sequence: %d\n", medi->seq_id);
+	printf("Seq _ Id: %d\n", medi->seq_id);
+	fprintf(write, "Sequence: %d\n", medi->seq_id);
 
 	//type bitmath
 	unsigned char byte_starter = buf[83];
 	byte_starter &= 7;
 	medi->type = byte_starter;
 	printf("Type: %d\n", medi->type);
+	fprintf(write, "Type: %d\n", medi->type);
 	*type_pt = medi-> type;
 
 	//total length
@@ -228,6 +239,7 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_length_starter += buf[85];
 	medi->total_length = byte_length_starter;
 	printf("Total Length: %d\n", medi->total_length);
+	fprintf(write, "Total Length: %d\n", medi->total_length);
 
 	//source device id bitmath
 	unsigned int byte_start_source = buf[86];
@@ -238,7 +250,8 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_start_source <<= 8;
 	byte_start_source += buf[89];
 	medi->source_device_id = byte_start_source;
-	printf("Source Device: %d\n", medi->source_device_id);
+	printf("S Device Id: %d\n", medi->source_device_id);
+	fprintf(write, "Source Device: %d\n", medi->source_device_id);
 
 	//dest device id bitmath
 	unsigned int byte_start_dest = buf[90];
@@ -249,7 +262,10 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_start_dest <<= 8;
 	byte_start_dest += buf[93];
 	medi->dest_device_id = byte_start_dest;
-	printf("Destination Device: %d\n", medi->dest_device_id);
+	printf("D Device Id: %d\n", medi->dest_device_id);
+	fprintf(write, "Destination Device: %d\n", medi->dest_device_id);
+
+	fclose(write);
 
 	return 0;
 }
