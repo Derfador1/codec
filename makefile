@@ -1,12 +1,16 @@
 
 CFLAGS+=-g -std=c11 -Wall -Wextra -pedantic -Wno-deprecated -Wstack-usage=1024
 
-codec: encoder.c
-	gcc -g -std=c11 -Wall -Wextra -pedantic -Wno-deprecated -Wstack-usage=1024 -o codec encoder.c -lm
+decoder: decoder.c
+	gcc $(CFLAGS) -o decoder decoder.c -lm
+
+encoder: encoder.c
+	gcc $(CFLAGS) -o encoder encoder.c -lm
 
 debug: CFLAGS+=-g
-debug: codec
+debug: encoder, decoder
 
 clean:
-	-rm codec
+	-rm decoder
+	-rm encoder
 
