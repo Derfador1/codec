@@ -95,7 +95,6 @@ struct meditrik *make_meditrik(void)
 
 
 int hexDump(void *buf, int len);
-int printtofile(void *buf, int len);
 int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt);
 int field_check(unsigned int *type_pt, unsigned char * buf, int count);
 
@@ -104,7 +103,12 @@ int main(int argc, char * argv[])
 {
 	if (argc == 1)
 	{
-		printf("whore\n");
+		printf("Please retry with a valid file to open.\n");
+		exit(1);
+	}
+	else if (argc == 2)
+	{
+		printf("You successfully opened %s\n", argv[1]);
 	}
 
 	int count = 0;
@@ -125,7 +129,7 @@ int main(int argc, char * argv[])
 
 	count = read(descrip, buf, SIZE);
 
-	printf("%d", count);
+	printf("Count of bytes: %d", count);
 	
 	hexDump(buf, count);
 
@@ -134,8 +138,6 @@ int main(int argc, char * argv[])
 	bit_seperation(stuff, buf, type_pt);
 
 	field_check(type_pt, buf, count);
-
-	//printtofile(buf, count);
 
 	free(buf);
 
@@ -178,30 +180,6 @@ int hexDump(void *buf, int len)
 	return 1;
 }
 
-
-int printtofile(void * buf, int len)
-{
-	FILE *fp;
-	fp = fopen("decoded.txt", "w");
-
-	int c = 0;
-
-	unsigned char * buffer = buf;
-
-	for (c = 0; c < len; c++)
-	{
-		if ((c % 16) == 0) {
-			fprintf(fp, "\n");
-		}
-		fprintf(fp, "%02x ", buffer[c]);
-	}
-
-	fclose(fp);
-
-	return 1;
-}
-
-
 int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt)
 {
 	FILE *write;
@@ -211,7 +189,7 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	unsigned int byte_start = buf[82];
 	byte_start >>= 4;
 	medi->version = byte_start;
-	printf("Version: %d\n", medi->version);
+	fprintf(stdout, "Version: %d\n", medi->version);
 	fprintf(write, "Version: %d\n", medi->version);
 
 	//sequence_id bitmath
@@ -222,14 +200,14 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_start2 >>= 3;
 	byte_start += byte_start2;
 	medi->seq_id = byte_start;
-	printf("Seq _ Id: %d\n", medi->seq_id);
+	fprintf(stdout, "Seq _ Id: %d\n", medi->seq_id);
 	fprintf(write, "Sequence: %d\n", medi->seq_id);
 
 	//type bitmath
 	unsigned char byte_starter = buf[83];
 	byte_starter &= 7;
 	medi->type = byte_starter;
-	printf("Type: %d\n", medi->type);
+	fprintf(stdout, "Type: %d\n", medi->type);
 	fprintf(write, "Type: %d\n", medi->type);
 	*type_pt = medi-> type;
 
@@ -238,7 +216,7 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_length_starter <<= 8;
 	byte_length_starter += buf[85];
 	medi->total_length = byte_length_starter;
-	printf("Total Length: %d\n", medi->total_length);
+	fprintf(stdout, "Total Length: %d\n", medi->total_length);
 	fprintf(write, "Total Length: %d\n", medi->total_length);
 
 	//source device id bitmath
@@ -250,7 +228,7 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_start_source <<= 8;
 	byte_start_source += buf[89];
 	medi->source_device_id = byte_start_source;
-	printf("S Device Id: %d\n", medi->source_device_id);
+	fprintf(stdout, "S Device Id: %d\n", medi->source_device_id);
 	fprintf(write, "Source Device: %d\n", medi->source_device_id);
 
 	//dest device id bitmath
@@ -262,7 +240,7 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	byte_start_dest <<= 8;
 	byte_start_dest += buf[93];
 	medi->dest_device_id = byte_start_dest;
-	printf("D Device Id: %d\n", medi->dest_device_id);
+	fprintf(stdout, "D Device Id: %d\n", medi->dest_device_id);
 	fprintf(write, "Destination Device: %d\n", medi->dest_device_id);
 
 	fclose(write);
