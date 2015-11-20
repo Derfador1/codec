@@ -21,52 +21,41 @@ union bytes {
 	unsigned int data2[3];
 };
 
-
 int fill(char * fake_buffer, size_t one, FILE *writer);
-int get_value(int *version, int *seq_id, int *type, int *total_length, int *source_device_id, int * dest_device_id);
+int get_value(char * x, union bytes *byte);
 
 int main(int argc, char * argv[])
 {
+	char * x;
 	if (argc == 1)
 	{
 		printf("Please retry with a valid file to open.\n");
 		exit(1);
 	}
-	else if (argc == 2)
+	else if (argc >= 2)
 	{
-		printf("You have successfully chosen %s\n", argv[1]);
+		printf("You have successfully chosen to read from %s\n", argv[1]);
 	}
 
+	x = argv[1];
 	union bytes byte;
 
 	memset(byte.data2, '\0', sizeof(byte.data2));
 
-	int *version = malloc(sizeof(int));
-	int *seq_id = malloc(sizeof(int));
-	int *type = malloc(sizeof(int));
-	int *total_length = malloc(sizeof(int));
-	int *source_device_id = malloc(sizeof(int));
-	int *dest_device_id = malloc(sizeof(int));
+	get_value(x, &byte);
 
-	get_value(version, seq_id, type, total_length, source_device_id, dest_device_id);
-
-	byte.medi.version = *version;	
-	byte.medi.seq_id = *seq_id;
-	byte.medi.type = *type;
-	byte.medi.total_length = *total_length;
-	byte.medi.source_device_id = *source_device_id;
-	byte.medi.dest_device_id = *dest_device_id;
-
-	printf("%d\n", *version);
-	printf("%d\n", *seq_id);
-	printf("%d\n", *type);
-	printf("%d\n", *total_length);
-	printf("%d\n", *source_device_id);
-	printf("%d\n", *dest_device_id);
+	/*
+	printf("%d\n", byte.medi.version);
+	printf("%d\n", byte.medi.seq_id);
+	printf("%d\n", byte.medi.type);
+	printf("%d\n", byte.medi.total_length);
+	printf("%d\n", byte.medi.source_device_id);
+	printf("%d\n", byte.medi.dest_device_id);
+	*/
 
 	FILE *writer;
 
-	writer = fopen(argv[1], "w+");
+	writer = fopen(argv[2], "w+");
 
 
 	char *fake_buffer = malloc(1);
@@ -90,21 +79,7 @@ int main(int argc, char * argv[])
 
 	free(fake_buffer);
 
-	free(version);
-
-	free(seq_id);
-
-	free(type);
-
-	free(total_length);
-
-	free(source_device_id);
-
-	free(dest_device_id);
-
 	fclose(writer);
-
-	
 }
 
 int fill(char * fake_buffer, size_t one, FILE *writer)
@@ -117,10 +92,18 @@ int fill(char * fake_buffer, size_t one, FILE *writer)
 	return 1;
 }
 
-int get_value(int *version, int *seq_id, int *type, int *total_length, int *source_device_id, int * dest_device_id)
+
+int get_value(char * x, union bytes *byte)
 {
 	FILE *reader;
-	reader = fopen("decoded.txt", "r");
+	reader = fopen(x, "r");
+
+	int *version = malloc(sizeof(int));
+	int *seq_id = malloc(sizeof(int));
+	int *type = malloc(sizeof(int));
+	int *total_length = malloc(sizeof(int));
+	int *source_device_id = malloc(sizeof(int));
+	int *dest_device_id = malloc(sizeof(int));
 
 	fscanf(reader, "Version: %d\n", version);
 	fscanf(reader, "Sequence: %d\n", seq_id);
@@ -128,6 +111,27 @@ int get_value(int *version, int *seq_id, int *type, int *total_length, int *sour
 	fscanf(reader, "Total Length: %d\n", total_length);
 	fscanf(reader, "Source Device: %d\n", source_device_id);
 	fscanf(reader, "Destination Device: %d\n", dest_device_id);
+
+	(*byte).medi.version = *version;
+	(*byte).medi.seq_id = *seq_id;
+	(*byte).medi.type = *type;
+	(*byte).medi.total_length = *total_length;
+	(*byte).medi.source_device_id = *source_device_id;
+	(*byte).medi.dest_device_id = *dest_device_id;
+
+	printf("%d\n", *version);
+	printf("%d\n", *seq_id);
+	printf("%d\n", *type);
+	printf("%d\n", *total_length);
+	printf("%d\n", *source_device_id);
+	printf("%d\n", *dest_device_id);
+
+	free(version);
+	free(seq_id);
+	free(type);
+	free(total_length);
+	free(source_device_id);
+	free(dest_device_id);
 
 	fclose(reader);
 
