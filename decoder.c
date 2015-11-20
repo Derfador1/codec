@@ -95,8 +95,8 @@ struct meditrik *make_meditrik(void)
 
 
 int hexDump(void *buf, int len);
-int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt);
-int field_check(unsigned int *type_pt, unsigned char * buf, int count);
+int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt);
+int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count);
 
 
 int main(int argc, char * argv[])
@@ -135,9 +135,14 @@ int main(int argc, char * argv[])
 
 	struct meditrik *stuff = make_meditrik();
 
-	bit_seperation(stuff, buf, type_pt);
+	FILE *write;
+	write = fopen("decoded.txt", "w");
 
-	field_check(type_pt, buf, count);
+	bit_seperation(write, stuff, buf, type_pt);
+
+	field_check(write, type_pt, buf, count);
+
+	fclose(write);
 
 	free(buf);
 
@@ -180,11 +185,8 @@ int hexDump(void *buf, int len)
 	return 1;
 }
 
-int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *type_pt)
+int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt)
 {
-	FILE *write;
-	write = fopen("decoded.txt", "w");
-
 	//version bitmath
 	unsigned int byte_start = buf[82];
 	byte_start >>= 4;
@@ -243,26 +245,48 @@ int bit_seperation(struct meditrik *medi, unsigned char * buf, unsigned int *typ
 	fprintf(stdout, "D Device Id: %d\n", medi->dest_device_id);
 	fprintf(write, "Destination Device: %d\n", medi->dest_device_id);
 
-	fclose(write);
 
 	return 0;
 }
 
 
-int field_check(unsigned int *type_pt, unsigned char * buf, int count)
+int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count)
 {
+
+	int glucose = 0;
+	int capsaicin = 0;
+	int omorfine = 0;
+
 	if (*type_pt == 0)
 	{
 		printf("Status of Device\n");
+		unsigned int glucose_start = buf[102];
+		glucose_start <<= 8;
+		glucose_start += buf[103];
+		glucose = glucose_start;
+		fprintf(write, "Glucose: %d\n", glucose);
+		fprintf(stdout, "Glucose: %d\n", glucose);
+
+		unsigned int capsaicin_start = buf[104];
+		capsaicin_start <<= 8;
+		capsaicin_start += buf[105];
+		capsaicin = capsaicin_start;
+		fprintf(write, "Capsaicin: %d\n", capsaicin);
+		fprintf(stdout, "Capsaicin: %d\n", capsaicin);
+
+		unsigned int omorfine_start = buf[106];
+		omorfine_start <<= 8;
+		omorfine_start += buf[107];
+		omorfine = omorfine_start;
+		fprintf(write, "Omorfine: %d\n", omorfine);
+		fprintf(stdout, "Omorfine: %d\n", omorfine);
+
 	}
 	else if (*type_pt == 1)
 	{
 		unsigned int byte_start = buf[94];
-
 		byte_start <<= 8;
-
 		byte_start += buf[95];
-
 		if (byte_start == 0)
 		{
 			printf("GET STATUS(0)\n");
@@ -272,7 +296,8 @@ int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 			unsigned int glucose = buf[96];
 			glucose <<= 8;
 			glucose += buf[97];
-			printf("Glucose set to: %d\n", glucose);
+			fprintf(write, "Glucose set to: %d\n", glucose);
+			fprintf(stdout, "Glucose set to: %d\n", glucose);
 		}
 		else if (byte_start == 2)
 		{
@@ -283,7 +308,8 @@ int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 			unsigned int capsaicin = buf[96];
 			capsaicin <<= 8;
 			capsaicin += buf[97];
-			printf("Capsaicin set to: %d\n", capsaicin);
+			fprintf(write, "Capsaicin set to: %d\n", capsaicin);
+			fprintf(stdout, "Capsaicin set to: %d\n", capsaicin);
 		}
 		else if (byte_start == 4)
 		{
@@ -294,7 +320,8 @@ int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 			unsigned int omorfine = buf[96];
 			omorfine <<= 8;
 			omorfine += buf[97];
-			printf("Omorfine set to: %d\n", omorfine);
+			fprintf(write, "Omorfine set to: %d\n", omorfine);
+			fprintf(stdout, "Omorfine set to: %d\n", omorfine);
 		}
 		else if (byte_start == 6)
 		{
@@ -303,6 +330,7 @@ int field_check(unsigned int *type_pt, unsigned char * buf, int count)
 		else if (byte_start == 7)
 		{
 			printf("Please re-send the packet! WHY CANT YOU PACKET RIGHT\n");
+			return 1;
 		}
 	}
 	else if (*type_pt == 2)
