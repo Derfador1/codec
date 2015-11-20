@@ -10,10 +10,7 @@
 
 
 
-//pull info from bits
-//ver = >> 4
-//type = >> 5
-//seq_id = >> 3 , and by mask
+//darn you commit
 
 
 //function to check values based on dec number
