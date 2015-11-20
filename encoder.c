@@ -15,6 +15,17 @@ struct meditrik {
 	unsigned int dest_device_id : 32;
 };
 
+struct gps {
+	double lat;
+	double longs;
+	float alt;
+};
+
+union gps_header{
+	struct gps fields;
+	unsigned char degrees[20];
+};
+
 union bytes {
 	struct meditrik medi;
 	unsigned short data[6];
@@ -22,7 +33,7 @@ union bytes {
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer);
-int get_value(char * x, union bytes *byte);
+int get_value(char * x, union bytes *byte, union gps_header *info);
 
 int main(int argc, char * argv[])
 {
@@ -38,20 +49,12 @@ int main(int argc, char * argv[])
 	}
 
 	x = argv[1];
+	union gps_header info;
 	union bytes byte;
 
 	memset(byte.data2, '\0', sizeof(byte.data2));
 
-	get_value(x, &byte);
-
-	/*
-	printf("%d\n", byte.medi.version);
-	printf("%d\n", byte.medi.seq_id);
-	printf("%d\n", byte.medi.type);
-	printf("%d\n", byte.medi.total_length);
-	printf("%d\n", byte.medi.source_device_id);
-	printf("%d\n", byte.medi.dest_device_id);
-	*/
+	get_value(x, &byte, &info);
 
 	FILE *writer;
 
@@ -61,7 +64,6 @@ int main(int argc, char * argv[])
 	char *fake_buffer = malloc(1);
 
 	fake_buffer[0] = 0;
-
 	byte.data[0] = htons(byte.data[0]);
 	byte.data[1] = htons(byte.data[1]);
 
@@ -71,11 +73,13 @@ int main(int argc, char * argv[])
 
 	size_t one = 1;
 
-	size_t three = 3;
+	size_t six = 6;
 
 	fill(fake_buffer, one, writer);
 
-	fwrite(&byte.data2, 4, three, writer);
+	fwrite(&byte.data, 2, six, writer);
+
+	fwrite(&info.degrees, 20, one, writer);
 
 	free(fake_buffer);
 
@@ -93,7 +97,7 @@ int fill(char * fake_buffer, size_t one, FILE *writer)
 }
 
 
-int get_value(char * x, union bytes *byte)
+int get_value(char * x, union bytes *byte, union gps_header *info)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -118,6 +122,22 @@ int get_value(char * x, union bytes *byte)
 	(*byte).medi.total_length = *total_length;
 	(*byte).medi.source_device_id = *source_device_id;
 	(*byte).medi.dest_device_id = *dest_device_id;
+
+	if (*type == 2)
+	{
+		double *tude = malloc(sizeof(double));
+		double *longs = malloc(sizeof(double));
+		double *alt = malloc(sizeof(double));
+
+		fscanf(reader, "Latitude : %lf\n", tude);
+		(*info).fields.lat = *tude;
+
+		printf("%.9lf\n", *tude);
+
+		free(tude);
+		free(longs);
+		free(alt);
+	}
 
 	printf("%d\n", *version);
 	printf("%d\n", *seq_id);
