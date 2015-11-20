@@ -95,7 +95,7 @@ struct meditrik *make_meditrik(void)
 
 
 int hexDump(void *buf, int len);
-int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt);
+int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt, unsigned int *total_length);
 int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count);
 
 
@@ -106,7 +106,7 @@ int main(int argc, char * argv[])
 		printf("Please retry with a valid file to open.\n");
 		exit(1);
 	}
-	else if (argc == 2)
+	else if (argc >= 2)
 	{
 		printf("You successfully opened %s\n", argv[1]);
 	}
@@ -114,6 +114,8 @@ int main(int argc, char * argv[])
 	int count = 0;
 
 	unsigned int *type_pt = malloc(sizeof(*type_pt));
+
+	unsigned int *total_length = malloc(sizeof(*total_length));
 
 	int descrip = open(argv[1], O_RDONLY);
 
@@ -138,7 +140,7 @@ int main(int argc, char * argv[])
 	FILE *write;
 	write = fopen("decoded.txt", "w");
 
-	bit_seperation(write, stuff, buf, type_pt);
+	bit_seperation(write, stuff, buf, type_pt, total_length);
 
 	field_check(write, type_pt, buf, count);
 
@@ -149,6 +151,8 @@ int main(int argc, char * argv[])
 	free(stuff);
 	
 	free(type_pt);
+
+	free(total_length);
 
 	close(descrip);
 }
@@ -185,7 +189,7 @@ int hexDump(void *buf, int len)
 	return 1;
 }
 
-int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt)
+int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt, unsigned int *total_length)
 {
 	//version bitmath
 	unsigned int byte_start = buf[82];
@@ -220,6 +224,7 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsi
 	medi->total_length = byte_length_starter;
 	fprintf(stdout, "Total Length: %d\n", medi->total_length);
 	fprintf(write, "Total Length: %d\n", medi->total_length);
+	*total_length = medi-> total_length;
 
 	//source device id bitmath
 	unsigned int byte_start_source = buf[86];
@@ -252,14 +257,46 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsi
 
 int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count)
 {
+	union battery {
+		unsigned char tempbuf[8];
+		double percent;
+	};
+
+	union lat {
+		unsigned char templat[8];
+		double degrees;
+	};
+
+	union longi {
+		unsigned char templong[8];
+		double degrees;
+	};
+
+	union altitude {
+		unsigned char tempalt[4];
+		float fathoms;
+	};
 
 	int glucose = 0;
 	int capsaicin = 0;
 	int omorfine = 0;
+	int counter = 0;
+	int start_of_payload = 94;
 
 	if (*type_pt == 0)
 	{
 		printf("Status of Device\n");
+
+		union battery power;
+
+		for (counter = 0; counter < 8; counter++)
+		{
+			power.tempbuf[counter] = buf[(start_of_payload + counter)];
+		}
+
+		fprintf(stdout, "Battery power currently is: %.2f%%\n", power.percent * 100);
+		fprintf(write, "Battery power currently is: %.2f%%\n", power.percent * 100);
+
 		unsigned int glucose_start = buf[102];
 		glucose_start <<= 8;
 		glucose_start += buf[103];
@@ -335,7 +372,34 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 	}
 	else if (*type_pt == 2)
 	{
-		//gps data
+		union lat fieldla;
+		union longi fieldlo;
+		union altitude alt;
+
+		for (counter = 0; counter < 8; counter++)
+		{
+			fieldlo.templong[counter] = buf[((start_of_payload + 8) + counter)];
+		}
+
+		fprintf(stdout, "Longitude : %.9f deg. W\n", fieldlo.degrees);
+		fprintf(write, "Longitude : %.9f deg. W\n", fieldlo.degrees);
+
+		for (counter = 0; counter < 8; counter++)
+		{
+			fieldla.templat[counter] = buf[(start_of_payload + counter)];
+		}
+
+		fprintf(stdout, "Latitude : %.9f deg. N\n", fieldla.degrees);
+		fprintf(write, "Latitude : %.9f deg. N\n", fieldla.degrees);
+
+		for (counter = 0; counter < 8; counter++)
+		{
+			alt.tempalt[counter] = buf[((start_of_payload + 16) + counter)];
+		}
+
+		fprintf(stdout, "Altitude : %.0f ft\n", alt.fathoms * 6);
+		fprintf(write, "Altitude : %.0f ft\n", alt.fathoms * 6);
+
 	}
 	else if (*type_pt == 3)
 	{
