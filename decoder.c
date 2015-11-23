@@ -291,8 +291,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			power.tempbuf[counter] = buf[(start_of_payload + counter)];
 		}
 
-		fprintf(stdout, "Battery power currently is: %.2f%%\n", power.percent * 100);
-		fprintf(write, "Battery power currently is: %.2f%%\n", power.percent * 100);
+		fprintf(stdout, "Battery power : %.2f%%\n", power.percent * 100);
+		fprintf(write, "Battery power : %.2f%%\n", power.percent * 100);
 
 		unsigned int glucose_start = buf[102];
 		glucose_start <<= 8;
@@ -391,7 +391,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 		fprintf(write, "Longitude : %.9f degree W\n", fieldlo.degrees);
 
 
-		for (counter = 0; counter < 8; counter++)
+		for (counter = 0; counter < 4; counter++)
 		{
 			alt.tempalt[counter] = buf[((start_of_payload + 16) + counter)];
 		}
