@@ -111,11 +111,19 @@ int main(int argc, char * argv[])
 
 		fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
 	}
+	else if (*type_pt == 1)
+	{
+		//function to check for command
+	}
 	else if (*type_pt == 2)
 	{
 		get_gps(x, &info);
 
 		fwrite(&info.degrees, 20, one, writer);
+	}
+	else if (*type_pt == 3)
+	{
+
 	}
 
 	free(fake_buffer);
@@ -276,3 +284,7 @@ int get_gps(char * x, union gps_header *gps)
 
 	return 1;
 }
+
+/*
+
+*/
