@@ -321,6 +321,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 		unsigned int byte_start = buf[94];
 		byte_start <<= 8;
 		byte_start += buf[95];
+		fprintf(write, "Command: %d\n", byte_start);
 		if (byte_start == 0)
 		{
 			printf("GET STATUS(0)\n");
@@ -379,16 +380,16 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			fieldla.templat[counter] = buf[(start_of_payload + counter)];
 		}
 
-		fprintf(stdout, "Latitude : %.9f degree N\n", fieldla.degrees);
-		fprintf(write, "Latitude : %.9f degree N\n", fieldla.degrees);
+		fprintf(stdout, "Latitude: %.9f degree N\n", fieldla.degrees);
+		fprintf(write, "Latitude: %.9f degree N\n", fieldla.degrees);
 
 		for (counter = 0; counter < 8; counter++)
 		{
 			fieldlo.templong[counter] = buf[((start_of_payload + 8) + counter)];
 		}
 
-		fprintf(stdout, "Longitude : %.9f degree W\n", fieldlo.degrees);
-		fprintf(write, "Longitude : %.9f degree W\n", fieldlo.degrees);
+		fprintf(stdout, "Longitude: %.9f degree W\n", fieldlo.degrees);
+		fprintf(write, "Longitude: %.9f degree W\n", fieldlo.degrees);
 
 
 		for (counter = 0; counter < 4; counter++)
@@ -396,8 +397,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			alt.tempalt[counter] = buf[((start_of_payload + 16) + counter)];
 		}
 
-		fprintf(stdout, "Altitude : %.0f ft\n", alt.fathoms * 6);
-		fprintf(write, "Altitude : %.0f ft\n", alt.fathoms * 6);
+		fprintf(stdout, "Altitude: %.0f ft\n", alt.fathoms * 6);
+		fprintf(write, "Altitude: %.0f ft\n", alt.fathoms * 6);
 
 	}
 	else if (*type_pt == 3)
