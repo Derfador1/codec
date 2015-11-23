@@ -45,14 +45,15 @@ union stat_payload {
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer);
-int get_value(char * x, union bytes *byte, union gps_header *info, union stat_payload *packet, unsigned int *type_pt);
-//int get_gps(char * x, union gps_header *info);
+int get_value(char * x, union bytes *byte, union stat_payload *packet, unsigned int *type_pt);
+int get_gps(char * x, union gps_header *gps);
 //int get_statpayload(char *x, union stat_playload *packet);
 
 int main(int argc, char * argv[])
 {
 	char * x;
 	unsigned int *type_pt = malloc(sizeof(type_pt));
+
 	if (argc == 1)
 	{
 		printf("Please retry with a valid file to open.\n");
@@ -74,7 +75,7 @@ int main(int argc, char * argv[])
 	memset(info.degrees, '\0', sizeof(info.degrees));
 	memset(packet.printer, '\0', sizeof(packet.printer));
 
-	get_value(x, &byte, &info, &packet, type_pt);
+	get_value(x, &byte, &packet, type_pt);
 
 	FILE *writer;
 
@@ -83,6 +84,7 @@ int main(int argc, char * argv[])
 	char *fake_buffer = malloc(1);
 
 	fake_buffer[0] = 0;
+
 	byte.data[0] = htons(byte.data[0]);
 	byte.data[1] = htons(byte.data[1]);
 
@@ -104,10 +106,12 @@ int main(int argc, char * argv[])
 
 	if (*type_pt == 0)
 	{
+		//get_statpayload(x, packet);
 		fwrite(&packet.printer, 2, 7, writer); //sizeof(packet.fields) instead of 14
 	}
 	else if (*type_pt == 2)
 	{
+		get_gps(x, &info);
 		fwrite(&info.degrees, 20, one, writer);
 	}
 
@@ -129,7 +133,7 @@ int fill(char * fake_buffer, size_t one, FILE *writer)
 }
 
 
-int get_value(char * x, union bytes *byte, union gps_header *info, union stat_payload *packet, unsigned int *type_pt)
+int get_value(char * x, union bytes *byte, union stat_payload *packet, unsigned int *type_pt)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -184,37 +188,15 @@ int get_value(char * x, union bytes *byte, union gps_header *info, union stat_pa
 		free(capsaicin);
 		free(omorfine);
 	}	
-	else if (*type == 2)
-	{
-		double *tude = malloc(sizeof(double));
-		double *lon = malloc(sizeof(double));
-		float *alt = malloc(sizeof(float));
 
-		fscanf(reader, "Latitude : %lf degree N\n", tude);
-		fscanf(reader, "Longitude : %lf degree W\n", lon);
-		fscanf(reader, "Altitude : %f ft\n", alt);
-
-		(*info).fields.lat = *tude;
-		(*info).fields.longs = *lon;
-		(*info).fields.alt = (*alt/6);
-
-		/*
-		printf("%.9lf\n", *tude);
-		printf("%.9lf\n", *lon);
-		printf("%.1f\n", (*info).fields.alt);
-		*/
-
-		free(tude);
-		free(lon);
-		free(alt);
-	}
-
+	/*
 	printf("%d\n", *version);
 	printf("%d\n", *seq_id);
 	printf("%d\n", *type);
 	printf("%d\n", *total_length);
 	printf("%d\n", *source_device_id);
 	printf("%d\n", *dest_device_id);
+	*/
 
 	free(version);
 	free(seq_id);
@@ -226,4 +208,63 @@ int get_value(char * x, union bytes *byte, union gps_header *info, union stat_pa
 	fclose(reader);
 
 	return 1;
+}
+
+/*
+int get_statpayload(char *x, union stat_playload *packet)
+{
+
+}
+*/
+
+int get_gps(char * x, union gps_header *gps)
+{
+	FILE *reader;
+	reader = fopen(x, "r");
+
+	char str[50];
+	double value[5];
+	unsigned int i = 0;
+
+	double *tude = malloc(sizeof(double));
+	double *lon = malloc(sizeof(double));
+	float *alt = malloc(sizeof(float));
+
+	while(fgets(str, 50, reader) != NULL)
+	{
+		if(sscanf(str, "Latitude : %lf\n", &value[i]))
+		{
+			*tude = value[i];
+			i++;
+		}
+		else if (sscanf(str, "Longitude : %lf\n", &value[i]))
+		{
+			*lon = value[i];
+			i++;
+		}
+		else if(sscanf(str, "Altitude : %lf\n", &value[i]))
+		{
+			*alt = value[i];
+			i++;
+		}
+	}
+
+	(*gps).fields.lat = *tude;
+	(*gps).fields.longs = *lon;
+	(*gps).fields.alt = (*alt/6);
+
+	/*
+	printf("%.9lf\n", (*gps).fields.lat);
+	printf("%.9lf\n", (*gps).fields.longs);
+	printf("%.1f\n", (*gps).fields.alt);
+	*/
+
+	free(tude);
+	free(lon);
+	free(alt);
+
+	fclose(reader);
+
+	return 1;
+
 }
