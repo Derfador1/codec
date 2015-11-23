@@ -45,9 +45,9 @@ union stat_payload {
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer);
-int get_value(char * x, union bytes *byte, union stat_payload *packet, unsigned int *type_pt);
+int get_value(char * x, union bytes *byte, unsigned int *type_pt);
 int get_gps(char * x, union gps_header *gps);
-//int get_statpayload(char *x, union stat_playload *packet);
+int get_statpayload(char * x, union stat_payload *pack);
 
 int main(int argc, char * argv[])
 {
@@ -75,7 +75,7 @@ int main(int argc, char * argv[])
 	memset(info.degrees, '\0', sizeof(info.degrees));
 	memset(packet.printer, '\0', sizeof(packet.printer));
 
-	get_value(x, &byte, &packet, type_pt);
+	get_value(x, &byte, type_pt);
 
 	FILE *writer;
 
@@ -91,11 +91,6 @@ int main(int argc, char * argv[])
 	byte.data2[1] = htonl(byte.data2[1]);
 	byte.data2[2] = htonl(byte.data2[2]);
 
-	//move to if statement
-	packet.printer[4] = htons(packet.printer[4]);
-	packet.printer[5] = htons(packet.printer[5]);
-	packet.printer[6] = htons(packet.printer[6]);
-
 	size_t one = 1;
 
 	size_t six = 6;
@@ -106,12 +101,20 @@ int main(int argc, char * argv[])
 
 	if (*type_pt == 0)
 	{
-		//get_statpayload(x, packet);
-		fwrite(&packet.printer, 2, 7, writer); //sizeof(packet.fields) instead of 14
+		get_statpayload(x, &packet);
+
+		packet.printer[4] = htons(packet.printer[4]);
+
+		packet.printer[5] = htons(packet.printer[5]);
+
+		packet.printer[6] = htons(packet.printer[6]);
+
+		fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
 	}
 	else if (*type_pt == 2)
 	{
 		get_gps(x, &info);
+
 		fwrite(&info.degrees, 20, one, writer);
 	}
 
@@ -133,7 +136,7 @@ int fill(char * fake_buffer, size_t one, FILE *writer)
 }
 
 
-int get_value(char * x, union bytes *byte, union stat_payload *packet, unsigned int *type_pt)
+int get_value(char * x, union bytes *byte, unsigned int *type_pt)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -159,44 +162,7 @@ int get_value(char * x, union bytes *byte, union stat_payload *packet, unsigned 
 	(*byte).medi.source_device_id = *source_device_id;
 	(*byte).medi.dest_device_id = *dest_device_id;
 
-	*type_pt = *type;
-
-	if (*type == 0)
-	{
-		double *power = malloc(sizeof(double));
-		short *glucose = malloc(sizeof(short));
-		short *capsaicin = malloc(sizeof(short));
-		short *omorfine = malloc(sizeof(short));
-
-		fscanf(reader, "Battery power : %lf%%\n", power);
-		fscanf(reader, "Glucose: %hd\n", glucose);
-		fscanf(reader, "Capsaicin: %hd\n", capsaicin);
-		fscanf(reader, "Omorfine: %hd\n", omorfine);
-
-		(*packet).payload.battery = (*power/100);
-		(*packet).payload.glucose = *glucose;
-		(*packet).payload.capsaicin = *capsaicin;
-		(*packet).payload.omorfine = *omorfine;
-
-		printf("%.2f\n", *power);
-		printf("%d\n", *glucose);
-		printf("%d\n", *capsaicin);
-		printf("%d\n", *omorfine);
-
-		free(power);
-		free(glucose);
-		free(capsaicin);
-		free(omorfine);
-	}	
-
-	/*
-	printf("%d\n", *version);
-	printf("%d\n", *seq_id);
-	printf("%d\n", *type);
-	printf("%d\n", *total_length);
-	printf("%d\n", *source_device_id);
-	printf("%d\n", *dest_device_id);
-	*/
+	*type_pt = *type;	
 
 	free(version);
 	free(seq_id);
@@ -210,12 +176,61 @@ int get_value(char * x, union bytes *byte, union stat_payload *packet, unsigned 
 	return 1;
 }
 
-/*
-int get_statpayload(char *x, union stat_playload *packet)
-{
 
+int get_statpayload(char *x, union stat_payload *pack)
+{
+	FILE *reader;
+	reader = fopen(x, "r");
+
+	char str[50];
+	double value1[1];
+	int value2[5];
+	unsigned int count1 = 0;
+	unsigned int count2 = 0;
+
+	double *power = malloc(sizeof(double));
+	short *glucose = malloc(sizeof(short));
+	short *capsaicin = malloc(sizeof(short));
+	short *omorfine = malloc(sizeof(short));
+
+	while(fgets(str, 50, reader) != NULL)
+	{
+		if(sscanf(str, "Battery power : %lf\n", &value1[count1]))
+		{
+			*power = value1[count1];
+		}
+		else if (sscanf(str, "Glucose: %d\n", &value2[count2]))
+		{
+			*glucose = value2[count2];
+			count2++;
+		}
+		else if(sscanf(str, "Capsaicin: %d\n", &value2[count2]))
+		{
+			*capsaicin = value2[count2];
+			count2++;
+		}
+		else if(sscanf(str, "Omorfine: %d\n", &value2[count2]))
+		{
+			*omorfine = value2[count2];
+			count2++;
+		}
+	}
+
+	(*pack).payload.battery = (*power/100);
+	(*pack).payload.glucose = *glucose;
+	(*pack).payload.capsaicin = *capsaicin;
+	(*pack).payload.omorfine = *omorfine;
+
+	free(power);
+	free(glucose);
+	free(capsaicin);
+	free(omorfine);
+
+	fclose(reader);
+
+	return 1;
 }
-*/
+
 
 int get_gps(char * x, union gps_header *gps)
 {
@@ -253,12 +268,6 @@ int get_gps(char * x, union gps_header *gps)
 	(*gps).fields.longs = *lon;
 	(*gps).fields.alt = (*alt/6);
 
-	/*
-	printf("%.9lf\n", (*gps).fields.lat);
-	printf("%.9lf\n", (*gps).fields.longs);
-	printf("%.1f\n", (*gps).fields.alt);
-	*/
-
 	free(tude);
 	free(lon);
 	free(alt);
@@ -266,5 +275,4 @@ int get_gps(char * x, union gps_header *gps)
 	fclose(reader);
 
 	return 1;
-
 }
