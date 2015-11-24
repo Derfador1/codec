@@ -377,20 +377,19 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 
 		for (counter = 0; counter < 8; counter++)
 		{
-			fieldla.templat[counter] = buf[(start_of_payload + counter)];
-		}
-
-		fprintf(stdout, "Latitude: %.9f degree N\n", fieldla.degrees);
-		fprintf(write, "Latitude: %.9f degree N\n", fieldla.degrees);
-
-		for (counter = 0; counter < 8; counter++)
-		{
-			fieldlo.templong[counter] = buf[((start_of_payload + 8) + counter)];
+			fieldlo.templong[counter] = buf[((start_of_payload) + counter)];
 		}
 
 		fprintf(stdout, "Longitude: %.9f degree W\n", fieldlo.degrees);
 		fprintf(write, "Longitude: %.9f degree W\n", fieldlo.degrees);
 
+		for (counter = 0; counter < 8; counter++)
+		{
+			fieldla.templat[counter] = buf[((start_of_payload + 8) + counter)];
+		}
+
+		fprintf(stdout, "Latitude: %.9f degree N\n", fieldla.degrees);
+		fprintf(write, "Latitude: %.9f degree N\n", fieldla.degrees);
 
 		for (counter = 0; counter < 4; counter++)
 		{
