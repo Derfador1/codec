@@ -28,6 +28,11 @@ struct status {
 	short omorfine;
 };
 
+struct c_payload {
+	short command;
+	short parameter;
+};
+
 union gps_header{
 	struct gps fields;
 	unsigned char degrees[20];
@@ -44,10 +49,16 @@ union stat_payload {
 	unsigned short printer[7];
 };
 
+union com_payload {
+	struct c_payload payloader;
+	unsigned short fields[2];
+};
+
 int fill(char * fake_buffer, size_t one, FILE *writer);
 int get_value(char * x, union bytes *byte, unsigned int *type_pt);
 int get_gps(char * x, union gps_header *gps);
 int get_statpayload(char * x, union stat_payload *pack);
+int command_payload(char * x, union com_payload *command);
 
 int main(int argc, char * argv[])
 {
@@ -69,11 +80,13 @@ int main(int argc, char * argv[])
 	union gps_header info;
 	union bytes byte;
 	union stat_payload packet;
+	union com_payload command;
 
 	memset(byte.data2, '\0', sizeof(byte.data2));
 	memset(byte.data, '\0', sizeof(byte.data));
 	memset(info.degrees, '\0', sizeof(info.degrees));
 	memset(packet.printer, '\0', sizeof(packet.printer));
+	memset(command.fields, '\0', sizeof(command.fields));
 
 	get_value(x, &byte, type_pt);
 
@@ -113,7 +126,13 @@ int main(int argc, char * argv[])
 	}
 	else if (*type_pt == 1)
 	{
-		//function to check for command
+		command_payload(x, &command);
+
+		command.fields[0] = htons(command.fields[0]);
+
+		command.fields[1] = htons(command.fields[1]);
+
+		fwrite(&command.fields, 2, 2, writer);
 	}
 	else if (*type_pt == 2)
 	{
@@ -123,7 +142,7 @@ int main(int argc, char * argv[])
 	}
 	else if (*type_pt == 3)
 	{
-
+		//
 	}
 
 	free(fake_buffer);
@@ -285,6 +304,74 @@ int get_gps(char * x, union gps_header *gps)
 	return 1;
 }
 
-/*
 
-*/
+int command_payload(char * x, union com_payload *command)
+{
+	FILE *reader;
+	reader = fopen(x, "r");
+
+	char str[50];
+	
+	size_t one = 1;
+
+	short *com = malloc(sizeof(short));
+	short *par = calloc(one, sizeof(short));
+
+	memset(str, '\0', 50);
+
+	while (fgets(str, 50, reader) != NULL)
+	{
+		if (sscanf(str, "Command: %hd\n", com))
+		{
+			printf("Command: %hd\n", *com);
+		}
+
+
+		if (*com == 1)
+		{
+			sscanf(str, "Glucose: %hi\n", par);
+		}
+		else if (*com == 3)
+		{
+			sscanf(str, "Capsaicin: %hd\n", par);
+		}
+		else if (*com == 5)
+		{
+			sscanf(str, "Omorfine: %hd\n", par);
+		}
+	}
+
+	if (*com == 0)
+	{
+		//printf("Get status\n");
+	}
+	else if (*com == 2)
+	{
+		printf("Get GPS data\n");
+	}
+	else if (*com == 4)
+	{
+		//reserved
+	}
+	else if (*com == 6)
+	{
+		//reserved
+	}
+	else if (*com == 7)
+	{
+		//repeat	
+	}
+
+	(*command).payloader.command = *com;
+
+	(*command).payloader.parameter = *par;
+
+	//printf("Com : %hd\n", (*command).payloader.command);
+
+	//printf("Par : %hd\n", (*command).payloader.parameter);
+
+	free(com);
+	free(par);
+
+	return 1;
+}
