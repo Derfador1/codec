@@ -16,8 +16,8 @@ struct meditrik {
 };
 
 struct gps {
-	double lat;
 	double longs;
+	double lat;
 	float alt;
 };
 
@@ -274,14 +274,14 @@ int get_gps(char * x, union gps_header *gps)
 
 	while(fgets(str, 50, reader) != NULL)
 	{
-		if(sscanf(str, "Latitude : %lf\n", &value[i]))
-		{
-			*tude = value[i];
-			i++;
-		}
-		else if (sscanf(str, "Longitude : %lf\n", &value[i]))
+		if (sscanf(str, "Longitude : %lf\n", &value[i]))
 		{
 			*lon = value[i];
+			i++;
+		}
+		else if(sscanf(str, "Latitude : %lf\n", &value[i]))
+		{
+			*tude = value[i];
 			i++;
 		}
 		else if(sscanf(str, "Altitude : %lf\n", &value[i]))
@@ -291,8 +291,8 @@ int get_gps(char * x, union gps_header *gps)
 		}
 	}
 
-	(*gps).fields.lat = *tude;
 	(*gps).fields.longs = *lon;
+	(*gps).fields.lat = *tude;
 	(*gps).fields.alt = (*alt/6);
 
 	free(tude);
@@ -343,7 +343,7 @@ int command_payload(char * x, union com_payload *command)
 
 	if (*com == 0)
 	{
-		//printf("Get status\n");
+		printf("Get status\n");
 	}
 	else if (*com == 2)
 	{
@@ -351,24 +351,21 @@ int command_payload(char * x, union com_payload *command)
 	}
 	else if (*com == 4)
 	{
-		//reserved
+		printf("Reserved(4)\n");
 	}
 	else if (*com == 6)
 	{
-		//reserved
+		printf("Reserved(6)\n");
 	}
 	else if (*com == 7)
 	{
-		//repeat	
+		//ummm possible change to set param as seq 
+		printf("Repeat packet(7)\n");	
 	}
 
 	(*command).payloader.command = *com;
 
 	(*command).payloader.parameter = *par;
-
-	//printf("Com : %hd\n", (*command).payloader.command);
-
-	//printf("Par : %hd\n", (*command).payloader.parameter);
 
 	free(com);
 	free(par);
