@@ -331,8 +331,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			unsigned int glucose = buf[96];
 			glucose <<= 8;
 			glucose += buf[97];
-			fprintf(write, "Glucose set to: %d\n", glucose);
-			fprintf(stdout, "Glucose set to: %d\n", glucose);
+			fprintf(write, "Glucose: %d\n", glucose);
+			fprintf(stdout, "Glucose: %d\n", glucose);
 		}
 		else if (byte_start == 2)
 		{
@@ -343,8 +343,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			unsigned int capsaicin = buf[96];
 			capsaicin <<= 8;
 			capsaicin += buf[97];
-			fprintf(write, "Capsaicin set to: %d\n", capsaicin);
-			fprintf(stdout, "Capsaicin set to: %d\n", capsaicin);
+			fprintf(write, "Capsaicin: %d\n", capsaicin);
+			fprintf(stdout, "Capsaicin: %d\n", capsaicin);
 		}
 		else if (byte_start == 4)
 		{
@@ -355,8 +355,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			unsigned int omorfine = buf[96];
 			omorfine <<= 8;
 			omorfine += buf[97];
-			fprintf(write, "Omorfine set to: %d\n", omorfine);
-			fprintf(stdout, "Omorfine set to: %d\n", omorfine);
+			fprintf(write, "Omorfine: %d\n", omorfine);
+			fprintf(stdout, "Omorfine: %d\n", omorfine);
 		}
 		else if (byte_start == 6)
 		{
