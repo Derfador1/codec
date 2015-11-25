@@ -55,7 +55,7 @@ union com_payload {
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer);
-int get_value(char * x, union bytes *byte, unsigned int *type_pt);
+int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len);
 int get_gps(char * x, union gps_header *gps);
 int get_statpayload(char * x, union stat_payload *pack);
 int command_payload(char * x, union com_payload *command);
@@ -64,6 +64,7 @@ int main(int argc, char * argv[])
 {
 	char * x;
 	unsigned int *type_pt = malloc(sizeof(type_pt));
+	unsigned int *total_len = malloc(sizeof(total_len));
 
 	if (argc == 1)
 	{
@@ -88,7 +89,9 @@ int main(int argc, char * argv[])
 	memset(packet.printer, '\0', sizeof(packet.printer));
 	memset(command.fields, '\0', sizeof(command.fields));
 
-	get_value(x, &byte, type_pt);
+	get_value(x, &byte, type_pt, total_len);
+
+	printf("%u\n", *total_len);
 
 	FILE *writer;
 
@@ -149,6 +152,8 @@ int main(int argc, char * argv[])
 
 	free(type_pt);
 
+	free(total_len);
+
 	fclose(writer);
 }
 
@@ -163,7 +168,7 @@ int fill(char * fake_buffer, size_t one, FILE *writer)
 }
 
 
-int get_value(char * x, union bytes *byte, unsigned int *type_pt)
+int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -189,7 +194,8 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt)
 	(*byte).medi.source_device_id = *source_device_id;
 	(*byte).medi.dest_device_id = *dest_device_id;
 
-	*type_pt = *type;	
+	*type_pt = *type;
+	*total_len = *total_length;	
 
 	free(version);
 	free(seq_id);
@@ -329,7 +335,7 @@ int command_payload(char * x, union com_payload *command)
 
 		if (*com == 1)
 		{
-			sscanf(str, "Glucose: %hi\n", par);
+			sscanf(str, "Glucose: %hd\n", par);
 		}
 		else if (*com == 3)
 		{
