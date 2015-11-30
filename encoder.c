@@ -55,7 +55,7 @@ union com_payload {
 };
 
 struct message_payload {
-	char *length;
+	unsigned char *length;
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer);
@@ -323,11 +323,11 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 
 	char str[50];
 	//char *buffer = malloc(SIZE);
-	messages->length = calloc(1, SIZE);
+	unsigned char *buffer = malloc(SIZE);
 	unsigned char *check_buf = calloc(1, SIZE);
 
-	//memset(buffer, '\0', SIZE);
 	memset(check_buf, '\0', SIZE);
+	memset(buffer, '\0', SIZE);
 	memset(str, '\0', 50);
 
 	unsigned int length = 0;
@@ -340,21 +340,14 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 		{
 			for (unsigned int i = 0; i < length; i++)
 			{
-				messages->length[i] = str[i + 9];
+				buffer[i] = str[i + 9];
 			}
 		}
 	}
 
-	//messages->length = buffer;
-	//strncpy(messages->length,buffer,20);
-
-	//printf("Length: %s\n", messages->length);
-
-	//printf("Buffer: %s\n", buffer);
+	messages->length = buffer;
 
 	free(check_buf);
-
-	free(messages->length);
 
 	fclose(reader);
 
@@ -440,7 +433,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 
 	free(fake_buffer);
 
-	//free(message.length);
+	free(message.length);
 
 	fclose(writer);
 
