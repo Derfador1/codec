@@ -55,7 +55,7 @@ union com_payload {
 };
 
 struct message_payload {
-	unsigned char *length;
+	char *length;
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer);
@@ -80,6 +80,7 @@ int main(int argc, char * argv[])
 	}
 	else if (argc >= 2)
 	{
+		//add error checking to make sure its a valid file
 		printf("You have successfully chosen to read from %s\n", argv[1]);
 	}
 
@@ -320,37 +321,42 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	(*messages).length = calloc(1, SIZE); //change to malloc and memset
-
 	char str[50];
+	//char *buffer = malloc(SIZE);
+	messages->length = calloc(1, SIZE);
+	unsigned char *check_buf = calloc(1, SIZE);
 
+	//memset(buffer, '\0', SIZE);
+	memset(check_buf, '\0', SIZE);
 	memset(str, '\0', 50);
 
 	unsigned int length = 0;
 
 	length = (*total_len - 12);
 
-	printf("%d\n", length);
-
-	unsigned char *h = malloc(SIZE); //change to malloc
-	unsigned char *e = calloc(1, SIZE); 
-
-	memset(h, '\0', SIZE);
-
 	while(fgets(str, 50, reader) != NULL)
 	{
-		if (sscanf(str, "Message: %s", e))
+		if (sscanf(str, "Message: %s", check_buf))
 		{
 			for (unsigned int i = 0; i < length; i++)
 			{
-				h[i] = str[i + 9];
+				messages->length[i] = str[i + 9];
 			}
-
-			printf("%s\n", h);
 		}
 	}
 
-	messages->length = h;
+	//messages->length = buffer;
+	//strncpy(messages->length,buffer,20);
+
+	//printf("Length: %s\n", messages->length);
+
+	//printf("Buffer: %s\n", buffer);
+
+	free(check_buf);
+
+	free(messages->length);
+
+	fclose(reader);
 
 	return 1;
 }
@@ -363,13 +369,11 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	union com_payload command;
 	struct message_payload message;
 
-	message.length = calloc(1, SIZE);
-
-	memset(byte.data2, '\0', sizeof(byte.data2));
-	memset(byte.data, '\0', sizeof(byte.data));
-	memset(info.degrees, '\0', sizeof(info.degrees));
-	memset(packet.printer, '\0', sizeof(packet.printer));
-	memset(command.fields, '\0', sizeof(command.fields));
+	memset(&byte, '\0', sizeof(byte));
+	memset(&info, '\0', sizeof(info));
+	memset(&packet, '\0', sizeof(packet));
+	memset(&command, '\0', sizeof(command));
+	memset(&message, 0, sizeof(message));
 
 	get_value(x, &byte, type_pt, total_len);
 
@@ -426,19 +430,17 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 		fwrite(&info.degrees, 20, one, writer);
 	}
 	else if (*type_pt == 3)
-	{
-		printf("%u\n", *total_len);
-
-		printf("%u\n", (*total_len - 12));
-
+	{	
 		get_messagepayload(x, &message, total_len);
 
-		fwrite(message.length, 1, length, writer);
+		printf("%s\n", message.length);
+
+		fwrite(message.length, length, one, writer);
 	}
 
 	free(fake_buffer);
 
-	free(message.length);
+	//free(message.length);
 
 	fclose(writer);
 
