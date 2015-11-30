@@ -54,15 +54,22 @@ union com_payload {
 	unsigned short fields[2];
 };
 
+struct message_payload {
+	unsigned char *length;
+};
+
 int fill(char * fake_buffer, size_t one, FILE *writer);
 int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len);
 int get_gps(char * x, union gps_header *gps);
 int get_statpayload(char * x, union stat_payload *pack);
 int command_payload(char * x, union com_payload *command);
+int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt);
+int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len);
 
 int main(int argc, char * argv[])
 {
 	char * x;
+	char * y;
 	unsigned int *type_pt = malloc(sizeof(type_pt));
 	unsigned int *total_len = malloc(sizeof(total_len));
 
@@ -77,84 +84,13 @@ int main(int argc, char * argv[])
 	}
 
 	x = argv[1];
+	y = argv[2];
 
-	union gps_header info;
-	union bytes byte;
-	union stat_payload packet;
-	union com_payload command;
-
-	memset(byte.data2, '\0', sizeof(byte.data2));
-	memset(byte.data, '\0', sizeof(byte.data));
-	memset(info.degrees, '\0', sizeof(info.degrees));
-	memset(packet.printer, '\0', sizeof(packet.printer));
-	memset(command.fields, '\0', sizeof(command.fields));
-
-	get_value(x, &byte, type_pt, total_len);
-
-	printf("%u\n", *total_len);
-
-	FILE *writer;
-
-	writer = fopen(argv[2], "w+");
-
-	char *fake_buffer = malloc(1);
-
-	fake_buffer[0] = 0;
-
-	byte.data[0] = htons(byte.data[0]);
-	byte.data[1] = htons(byte.data[1]);
-
-	byte.data2[1] = htonl(byte.data2[1]);
-	byte.data2[2] = htonl(byte.data2[2]);
-
-	size_t one = 1;
-
-	size_t six = 6;
-
-	fill(fake_buffer, one, writer);
-
-	fwrite(&byte.data, 2, six, writer);
-
-	if (*type_pt == 0)
-	{
-		get_statpayload(x, &packet);
-
-		packet.printer[4] = htons(packet.printer[4]);
-
-		packet.printer[5] = htons(packet.printer[5]);
-
-		packet.printer[6] = htons(packet.printer[6]);
-
-		fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
-	}
-	else if (*type_pt == 1)
-	{
-		command_payload(x, &command);
-
-		command.fields[0] = htons(command.fields[0]);
-
-		command.fields[1] = htons(command.fields[1]);
-
-		fwrite(&command.fields, 2, 2, writer);
-	}
-	else if (*type_pt == 2)
-	{
-		get_gps(x, &info);
-
-		fwrite(&info.degrees, 20, one, writer);
-	}
-	else if (*type_pt == 3)
-	{
-		//
-	}
-
-	free(fake_buffer);
+	write_func(x, y, total_len, type_pt);
 
 	free(type_pt);
 
 	free(total_len);
-
-	fclose(writer);
 }
 
 int fill(char * fake_buffer, size_t one, FILE *writer)
@@ -375,6 +311,136 @@ int command_payload(char * x, union com_payload *command)
 
 	free(com);
 	free(par);
+
+	return 1;
+}
+
+int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len)
+{
+	FILE *reader;
+	reader = fopen(x, "r");
+
+	(*messages).length = calloc(1, SIZE); //change to malloc and memset
+
+	char str[50];
+
+	memset(str, '\0', 50);
+
+	unsigned int length = 0;
+
+	length = (*total_len - 12);
+
+	printf("%d\n", length);
+
+	unsigned char *h = malloc(SIZE); //change to malloc
+	unsigned char *e = calloc(1, SIZE); 
+
+	memset(h, '\0', SIZE);
+
+	while(fgets(str, 50, reader) != NULL)
+	{
+		if (sscanf(str, "Message: %s", e))
+		{
+			for (unsigned int i = 0; i < length; i++)
+			{
+				h[i] = str[i + 9];
+			}
+
+			printf("%s\n", h);
+		}
+	}
+
+	messages->length = h;
+
+	return 1;
+}
+
+int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt)
+{
+	union gps_header info;
+	union bytes byte;
+	union stat_payload packet;
+	union com_payload command;
+	struct message_payload message;
+
+	message.length = calloc(1, SIZE);
+
+	memset(byte.data2, '\0', sizeof(byte.data2));
+	memset(byte.data, '\0', sizeof(byte.data));
+	memset(info.degrees, '\0', sizeof(info.degrees));
+	memset(packet.printer, '\0', sizeof(packet.printer));
+	memset(command.fields, '\0', sizeof(command.fields));
+
+	get_value(x, &byte, type_pt, total_len);
+
+	FILE *writer;
+
+	writer = fopen(y, "w+");
+
+	char *fake_buffer = malloc(1);
+
+	fake_buffer[0] = 0;
+
+	byte.data[0] = htons(byte.data[0]);
+	byte.data[1] = htons(byte.data[1]);
+
+	byte.data2[1] = htonl(byte.data2[1]);
+	byte.data2[2] = htonl(byte.data2[2]);
+
+	size_t one = 1;
+
+	size_t six = 6;
+
+	size_t length = (*total_len - 12);
+
+	fill(fake_buffer, one, writer);
+
+	fwrite(&byte.data, 2, six, writer);
+
+	if (*type_pt == 0)
+	{
+		get_statpayload(x, &packet);
+
+		packet.printer[4] = htons(packet.printer[4]);
+
+		packet.printer[5] = htons(packet.printer[5]);
+
+		packet.printer[6] = htons(packet.printer[6]);
+
+		fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
+	}
+	else if (*type_pt == 1)
+	{
+		command_payload(x, &command);
+
+		command.fields[0] = htons(command.fields[0]);
+
+		command.fields[1] = htons(command.fields[1]);
+
+		fwrite(&command.fields, 2, 2, writer);
+	}
+	else if (*type_pt == 2)
+	{
+		get_gps(x, &info);
+
+		fwrite(&info.degrees, 20, one, writer);
+	}
+	else if (*type_pt == 3)
+	{
+		printf("%u\n", *total_len);
+
+		printf("%u\n", (*total_len - 12));
+
+		get_messagepayload(x, &message, total_len);
+
+		fwrite(message.length, 1, length, writer);
+	}
+
+	free(fake_buffer);
+
+	free(message.length);
+
+	fclose(writer);
 
 	return 1;
 }
