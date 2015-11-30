@@ -7,11 +7,7 @@
 #include <stdlib.h>
 #define SIZE 255
 
-
-
-
 //darn you commit
-
 
 //function to check values based on dec number
 
@@ -402,13 +398,16 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 	}
 	else if (*type_pt == 3)
 	{
-		printf("Type - Message: ");
-
 		int i = 0;
+
+		fprintf(stdout, "Message: ");
+		fprintf(write, "Message: ");
+
 
 		for (i = 82 + (12); i < count; i++)
 		{
-			printf("%c", buf[i]);
+			fprintf(stdout, "%c", buf[i]);
+			fprintf(write, "%c", buf[i]);
 		}
 		printf("\n");
 	}
