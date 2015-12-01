@@ -134,13 +134,6 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	*type_pt = *type;
 	*total_len = *total_length;	
 
-	free(version);
-	free(seq_id);
-	free(type);
-	free(total_length);
-	free(source_device_id);
-	free(dest_device_id);
-
 	fclose(reader);
 
 	return 1;
@@ -282,6 +275,10 @@ int command_payload(char * x, union com_payload *command)
 		{
 			sscanf(str, "Omorfine: %hd\n", par);
 		}
+		else if (*com == 7)
+		{
+			sscanf(str, "Seq_param: %hd", par);
+		}
 	}
 
 	if (*com == 0)
@@ -300,11 +297,6 @@ int command_payload(char * x, union com_payload *command)
 	{
 		printf("Reserved(6)\n");
 	}
-	else if (*com == 7)
-	{
-		//ummm possible change to set param as seq 
-		printf("Repeat packet(7)\n");	
-	}
 
 	(*command).payloader.command = *com;
 
@@ -315,6 +307,7 @@ int command_payload(char * x, union com_payload *command)
 
 	return 1;
 }
+
 
 int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len)
 {
@@ -427,7 +420,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	{	
 		get_messagepayload(x, &message, total_len);
 
-		printf("%s", message.length);
+		printf("%s\n", message.length);
 
 		fwrite(message.length, length, one, writer);
 	}
