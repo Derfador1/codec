@@ -1,5 +1,7 @@
 
-CFLAGS+=-g -std=c11 -Wall -Wextra -pedantic -Wno-deprecated -Wstack-usage=1024
+CFLAGS+=-std=c11 -Wall -Wextra -Wpedantic -Wwrite-strings -Wstack-usage=1024 -Wfloat-equal -Waggregate-return -Winline
+
+all: decoder encoder
 
 decoder: decoder.c
 	gcc $(CFLAGS) -o decoder decoder.c -lm
@@ -8,7 +10,7 @@ encoder: encoder.c
 	gcc $(CFLAGS) -o encoder encoder.c -lm
 
 debug: CFLAGS+=-g
-debug: encoder, decoder
+debug: all
 
 clean:
 	-rm decoder
