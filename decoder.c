@@ -273,6 +273,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 	int glucose = 0;
 	int capsaicin = 0;
 	int omorfine = 0;
+	//int sequence_id = 0;
 	int counter = 0;
 	int start_of_payload = 94;
 
@@ -310,6 +311,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 		omorfine = omorfine_start;
 		fprintf(write, "Omorfine: %d\n", omorfine);
 		fprintf(stdout, "Omorfine: %d\n", omorfine);
+
+		return 0;
 
 	}
 	else if (*type_pt == 1)
@@ -360,9 +363,13 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 		}
 		else if (byte_start == 7)
 		{
-			printf("Please re-send the packet! WHY CANT YOU PACKET RIGHT\n");
-			return 1;
+			/*
+			fprintf(write, "Seq_param: %d\n", sequence_id);
+			fprintf(stdout, "Seq_param: %d\n", sequence_id);
+			*/
 		}
+
+		return 1;
 	}
 	else if (*type_pt == 2)
 	{
@@ -395,6 +402,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 		fprintf(stdout, "Altitude: %.0f ft\n", alt.fathoms * 6);
 		fprintf(write, "Altitude: %.0f ft\n", alt.fathoms * 6);
 
+		return 2;
+
 	}
 	else if (*type_pt == 3)
 	{
@@ -410,7 +419,9 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			fprintf(write, "%c", buf[i]);
 		}
 		printf("\n");
+
+		return 3;
 	}
 
-	return 0;
+	return 4;
 }
