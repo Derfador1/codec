@@ -273,7 +273,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 	int glucose = 0;
 	int capsaicin = 0;
 	int omorfine = 0;
-	//int sequence_id = 0;
+	int sequence_id = 0;
 	int counter = 0;
 	int start_of_payload = 94;
 
@@ -362,11 +362,9 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			printf("Reserved, GET OUT OF HERE\n");
 		}
 		else if (byte_start == 7)
-		{
-			/*
+		{		
 			fprintf(write, "Seq_param: %d\n", sequence_id);
 			fprintf(stdout, "Seq_param: %d\n", sequence_id);
-			*/
 		}
 
 		return 1;
