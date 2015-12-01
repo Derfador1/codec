@@ -80,7 +80,6 @@ int main(int argc, char * argv[])
 	}
 	else if (argc >= 2)
 	{
-		//add error checking to make sure its a valid file
 		printf("You have successfully chosen to read from %s\n", argv[1]);
 	}
 
@@ -133,6 +132,13 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 
 	*type_pt = *type;
 	*total_len = *total_length;	
+
+	free(version);
+	free(seq_id);
+	free(type);
+	free(total_length);
+	free(source_device_id);
+	free(dest_device_id);
 
 	fclose(reader);
 
@@ -254,6 +260,8 @@ int command_payload(char * x, union com_payload *command)
 	short *par = calloc(one, sizeof(short));
 
 	memset(str, '\0', 50);
+	memset(com, '\0', sizeof(short));
+	memset(par, '\0', sizeof(short));
 
 	while (fgets(str, 50, reader) != NULL)
 	{
@@ -263,22 +271,22 @@ int command_payload(char * x, union com_payload *command)
 		}
 
 
-		if (*com == 1)
-		{
-			sscanf(str, "Glucose: %hd\n", par);
-		}
-		else if (*com == 3)
-		{
-			sscanf(str, "Capsaicin: %hd\n", par);
-		}
-		else if (*com == 5)
-		{
-			sscanf(str, "Omorfine: %hd\n", par);
-		}
-		else if (*com == 7)
-		{
-			sscanf(str, "Seq_param: %hd", par);
-		}
+			if (*com == 1)
+			{
+				sscanf(str, "Glucose: %hd\n", par);
+			}
+			else if (*com == 3)
+			{
+				sscanf(str, "Capsaicin: %hd\n", par);
+			}
+			else if (*com == 5)
+			{
+				sscanf(str, "Omorfine: %hd\n", par);
+			}
+			else if (*com == 7)
+			{
+				sscanf(str, "Seq_param: %hd", par);
+			}
 	}
 
 	if (*com == 0)
@@ -304,6 +312,8 @@ int command_payload(char * x, union com_payload *command)
 
 	free(com);
 	free(par);
+
+	fclose(reader);
 
 	return 1;
 }
@@ -387,6 +397,8 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	fill(fake_buffer, one, writer);
 
 	fwrite(&byte.data, 2, six, writer);
+
+	//need some way to loop through this for as many times i need to
 
 	if (*type_pt == 0)
 	{
