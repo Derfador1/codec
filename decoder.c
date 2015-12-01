@@ -86,6 +86,26 @@ struct meditrik *make_meditrik(void)
 	return meditrik;
 }
 
+union battery {
+	unsigned char tempbuf[8];
+	double percent;
+};
+
+union lat {
+	unsigned char templat[8];
+	double degrees;
+};
+
+union longi {
+	unsigned char templong[8];
+	double degrees;
+};
+
+union altitude {
+	unsigned char tempalt[4];
+	float fathoms;
+};
+
 
 int hexDump(void *buf, int len);
 int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt, unsigned int *total_length);
@@ -250,30 +270,10 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsi
 
 int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count)
 {
-	union battery {
-		unsigned char tempbuf[8];
-		double percent;
-	};
-
-	union lat {
-		unsigned char templat[8];
-		double degrees;
-	};
-
-	union longi {
-		unsigned char templong[8];
-		double degrees;
-	};
-
-	union altitude {
-		unsigned char tempalt[4];
-		float fathoms;
-	};
 
 	int glucose = 0;
 	int capsaicin = 0;
 	int omorfine = 0;
-	int sequence_id = 0;
 	int counter = 0;
 	int start_of_payload = 94;
 
@@ -362,7 +362,10 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 			printf("Reserved, GET OUT OF HERE\n");
 		}
 		else if (byte_start == 7)
-		{		
+		{	
+			unsigned int sequence_id = buf[96];
+			sequence_id <<= 8;
+			sequence_id += buf[97];	
 			fprintf(write, "Seq_param: %d\n", sequence_id);
 			fprintf(stdout, "Seq_param: %d\n", sequence_id);
 		}
