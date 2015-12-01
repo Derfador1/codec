@@ -321,20 +321,19 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char str[50];
-	//char *buffer = malloc(SIZE);
+	char *str = malloc(SIZE);
 	unsigned char *buffer = malloc(SIZE);
 	unsigned char *check_buf = calloc(1, SIZE);
 
 	memset(check_buf, '\0', SIZE);
 	memset(buffer, '\0', SIZE);
-	memset(str, '\0', 50);
+	memset(str, '\0', SIZE);
 
 	unsigned int length = 0;
 
 	length = (*total_len - 12);
 
-	while(fgets(str, 50, reader) != NULL)
+	while(fgets(str, SIZE, reader) != NULL)
 	{
 		if (sscanf(str, "Message: %s", check_buf))
 		{
@@ -348,6 +347,8 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	messages->length = buffer;
 
 	free(check_buf);
+
+	free(str);
 
 	fclose(reader);
 
@@ -426,7 +427,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	{	
 		get_messagepayload(x, &message, total_len);
 
-		printf("%s\n", message.length);
+		printf("%s", message.length);
 
 		fwrite(message.length, length, one, writer);
 	}
