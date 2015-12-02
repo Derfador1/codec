@@ -58,20 +58,23 @@ struct message_payload {
 	unsigned char *length;
 };
 
-int fill(char * fake_buffer, size_t one, FILE *writer);
-int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len);
-int get_gps(char * x, union gps_header *gps);
-int get_statpayload(char * x, union stat_payload *pack);
-int command_payload(char * x, union com_payload *command);
-int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt);
-int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len);
+int fill(char * fake_buffer, size_t one, FILE *writer, int *start, unsigned int *len);
+int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len, unsigned int *len);
+int get_gps(char * x, union gps_header *gps, unsigned int *len);
+int get_statpayload(char * x, union stat_payload *pack, unsigned int *len);
+int command_payload(char * x, union com_payload *command, unsigned int *len);
+int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, int max_byte);
+int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len, unsigned int *len);
 
 int main(int argc, char * argv[])
 {
 	char * x;
 	char * y;
+
 	unsigned int *type_pt = malloc(sizeof(type_pt));
 	unsigned int *total_len = malloc(sizeof(total_len));
+
+	int max_byte = 0;
 
 	if (argc == 1)
 	{
@@ -86,16 +89,33 @@ int main(int argc, char * argv[])
 	x = argv[1];
 	y = argv[2];
 
-	write_func(x, y, total_len, type_pt);
+	FILE *reader;
+	reader = fopen(x, "r");
+
+	fseek(reader, -1, SEEK_END);
+
+	max_byte = ftell(reader);
+
+	rewind(reader);
+
+	printf("%d\n", max_byte);
+
+	write_func(x, y, total_len, type_pt, &max_byte);
 
 	free(type_pt);
 
 	free(total_len);
 }
 
-int fill(char * fake_buffer, size_t one, FILE *writer)
+int fill(char * fake_buffer, size_t one, FILE *writer, int *start, unsigned int *len)
 {
-	for (int c = 0; c < 82; c++)
+	//fill with start number instead of 82 , start at begining is global header(24) + excess headers(58)
+	//second time around fill with excess header
+	int c = 0;
+
+	c = *len;
+
+	for (; c < *start; c++)
 	{
 		fwrite(fake_buffer, 1, one, writer);
 	}
@@ -104,10 +124,14 @@ int fill(char * fake_buffer, size_t one, FILE *writer)
 }
 
 
-int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len)
+int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
+
+	char str[50];
+	int value[5];
+	unsigned int count = 0;
 
 	int *version = malloc(sizeof(int));
 	int *seq_id = malloc(sizeof(int));
@@ -116,12 +140,50 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	int *source_device_id = malloc(sizeof(int));
 	int *dest_device_id = malloc(sizeof(int));
 
-	fscanf(reader, "Version: %d\n", version);
-	fscanf(reader, "Sequence: %d\n", seq_id);
-	fscanf(reader, "Type: %d\n", type);
-	fscanf(reader, "Total Length: %d\n", total_length);
-	fscanf(reader, "Source Device: %d\n", source_device_id);
-	fscanf(reader, "Destination Device: %d\n", dest_device_id);
+	fseek(reader, *len, SEEK_SET);
+
+	while (fgets(str, 50, reader) != NULL)
+	{
+		if (sscanf(str, "Version: %d\n", &value[count]))
+		{
+			*version = value[count];
+			printf("Version: %d\n", *version);
+			count++;
+		}
+		else if (sscanf(str, "Sequence: %d\n", &value[count]))
+		{
+			*seq_id = value[count];
+			count++;
+		}
+		else if (sscanf(str, "Type: %d\n", &value[count]))
+		{
+			*type = value[count];
+			count++;
+		}
+		else if (sscanf(str, "Total Length: %d\n", &value[count]))
+		{
+			*total_length = value[count];
+			count++;
+		}
+		else if (sscanf(str, "Source Device: %d\n", &value[count]))
+		{
+			*source_device_id = value[count];
+			count++;
+		}
+		else if (sscanf(str, "Destination Device: %d\n", &value[count]))
+		{
+			*dest_device_id = value[count];
+			count++;
+		}
+		else
+		{	
+			break;
+		}
+
+
+		*len = ftell(reader);
+		printf("%d\n", *len);
+	}
 
 	(*byte).medi.version = *version;
 	(*byte).medi.seq_id = *seq_id;
@@ -146,7 +208,7 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 }
 
 
-int get_statpayload(char *x, union stat_payload *pack)
+int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -161,6 +223,10 @@ int get_statpayload(char *x, union stat_payload *pack)
 	short *glucose = malloc(sizeof(short));
 	short *capsaicin = malloc(sizeof(short));
 	short *omorfine = malloc(sizeof(short));
+
+	printf("Length in status payload before:%d\n", *len);
+
+	fseek(reader, *len, SEEK_SET);
 
 	while(fgets(str, 50, reader) != NULL)
 	{
@@ -183,6 +249,13 @@ int get_statpayload(char *x, union stat_payload *pack)
 			*omorfine = value2[count2];
 			count2++;
 		}
+		else
+		{
+			break;
+		}
+
+		*len = ftell(reader);
+		printf("Stat payload after %d\n", *len);
 	}
 
 	(*pack).payload.battery = (*power/100);
@@ -201,7 +274,7 @@ int get_statpayload(char *x, union stat_payload *pack)
 }
 
 
-int get_gps(char * x, union gps_header *gps)
+int get_gps(char * x, union gps_header *gps, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -213,6 +286,10 @@ int get_gps(char * x, union gps_header *gps)
 	double *tude = malloc(sizeof(double));
 	double *lon = malloc(sizeof(double));
 	float *alt = malloc(sizeof(float));
+
+	printf("Length in gps payload before:%d\n", *len);
+
+	fseek(reader, *len, SEEK_SET);
 
 	while(fgets(str, 50, reader) != NULL)
 	{
@@ -231,6 +308,13 @@ int get_gps(char * x, union gps_header *gps)
 			*alt = value[i];
 			i++;
 		}
+		else
+		{
+			break;
+		}
+
+		*len = ftell(reader);
+		printf("Gps payload after %d\n", *len);
 	}
 
 	(*gps).fields.longs = *lon;
@@ -247,7 +331,7 @@ int get_gps(char * x, union gps_header *gps)
 }
 
 
-int command_payload(char * x, union com_payload *command)
+int command_payload(char * x, union com_payload *command, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -263,31 +347,43 @@ int command_payload(char * x, union com_payload *command)
 	memset(com, '\0', sizeof(short));
 	memset(par, '\0', sizeof(short));
 
+	printf("Length in command payload before:%d\n", *len);
+
+	fseek(reader, *len, SEEK_SET);
+
 	while (fgets(str, 50, reader) != NULL)
 	{
 		if (sscanf(str, "Command: %hd\n", com))
 		{
 			printf("Command: %hd\n", *com);
 		}
+		else if (sscanf(str, "Glucose: %hd\n", par))
+		{
+			//
+		}
+		else if (sscanf(str, "Capsaicin: %hd\n", par))
+		{
+			//
+		}
+		else if (sscanf(str, "Omorfine: %hd\n", par))
+		{
+			//
+		}
+		else if (sscanf(str, "Seq_param: %hd", par))
+		{
+			//
+		}
+		else
+		{
+			break;
+		}
+
+		*len = ftell(reader);
+		printf("command payload after command %d\n", *len);
 
 
-			if (*com == 1)
-			{
-				sscanf(str, "Glucose: %hd\n", par);
-			}
-			else if (*com == 3)
-			{
-				sscanf(str, "Capsaicin: %hd\n", par);
-			}
-			else if (*com == 5)
-			{
-				sscanf(str, "Omorfine: %hd\n", par);
-			}
-			else if (*com == 7)
-			{
-				sscanf(str, "Seq_param: %hd", par);
-			}
 	}
+
 
 	if (*com == 0)
 	{
@@ -318,8 +414,7 @@ int command_payload(char * x, union com_payload *command)
 	return 1;
 }
 
-
-int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len)
+int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -331,6 +426,10 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	memset(check_buf, '\0', SIZE);
 	memset(buffer, '\0', SIZE);
 	memset(str, '\0', SIZE);
+
+	printf("Length in message payload before:%d\n", *len);
+
+	fseek(reader, *len, SEEK_SET);
 
 	unsigned int length = 0;
 
@@ -345,6 +444,13 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 				buffer[i] = str[i + 9];
 			}
 		}
+		else
+		{
+			break;
+		}
+
+		*len = ftell(reader);
+		printf("Message payload after %d\n", *len);
 	}
 
 	messages->length = buffer;
@@ -358,7 +464,7 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	return 1;
 }
 
-int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt)
+int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, int max_byte)
 {
 	union gps_header info;
 	union bytes byte;
@@ -372,74 +478,98 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	memset(&command, '\0', sizeof(command));
 	memset(&message, 0, sizeof(message));
 
-	get_value(x, &byte, type_pt, total_len);
+	unsigned int *len = malloc(sizeof(len));
+
+	*len = 0;
+
+	//memset(len, 0, sizeof(len));
+
+	int excess_headers = 58;
+	int global_headers = 24;
+	int b = 1;
+
+	int *start = malloc(sizeof(*start));
+
+	char *fake_buffer = malloc(1);
 
 	FILE *writer;
 
 	writer = fopen(y, "w+");
 
-	char *fake_buffer = malloc(1);
+	*start = excess_headers + global_headers;
 
-	fake_buffer[0] = 0;
+	//start loop here instead
+	//change start value here so that fill can hav +58
+	//actually might just need fill the fill function
 
-	byte.data[0] = htons(byte.data[0]);
-	byte.data[1] = htons(byte.data[1]);
-
-	byte.data2[1] = htonl(byte.data2[1]);
-	byte.data2[2] = htonl(byte.data2[2]);
-
-	size_t one = 1;
-
-	size_t six = 6;
-
-	size_t length = (*total_len - 12);
-
-	fill(fake_buffer, one, writer);
-
-	fwrite(&byte.data, 2, six, writer);
-
-	//need some way to loop through this for as many times i need to
-
-	if (*type_pt == 0)
+	while (b == 1)
 	{
-		get_statpayload(x, &packet);
+		size_t one = 1;
 
-		packet.printer[4] = htons(packet.printer[4]);
+		size_t six = 6;
 
-		packet.printer[5] = htons(packet.printer[5]);
+		size_t length = (*total_len - 12);
 
-		packet.printer[6] = htons(packet.printer[6]);
+		fake_buffer[0] = 0;
 
-		fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
-	}
-	else if (*type_pt == 1)
-	{
-		command_payload(x, &command);
+		fill(fake_buffer, one, writer, start, len);
 
-		command.fields[0] = htons(command.fields[0]);
+		get_value(x, &byte, type_pt, total_len, len);
 
-		command.fields[1] = htons(command.fields[1]);
+		byte.data[0] = htons(byte.data[0]);
+		byte.data[1] = htons(byte.data[1]);
 
-		fwrite(&command.fields, 2, 2, writer);
-	}
-	else if (*type_pt == 2)
-	{
-		get_gps(x, &info);
+		byte.data2[1] = htonl(byte.data2[1]);
+		byte.data2[2] = htonl(byte.data2[2]);
 
-		fwrite(&info.degrees, 20, one, writer);
-	}
-	else if (*type_pt == 3)
-	{	
-		get_messagepayload(x, &message, total_len);
 
-		printf("%s\n", message.length);
+		fwrite(&byte.data, 2, six, writer);
 
-		fwrite(message.length, length, one, writer);
+		if (*type_pt == 0)
+		{
+			get_statpayload(x, &packet, len);
+
+			packet.printer[4] = htons(packet.printer[4]);
+
+			packet.printer[5] = htons(packet.printer[5]);
+
+			packet.printer[6] = htons(packet.printer[6]);
+
+			fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
+		}
+		else if (*type_pt == 1)
+		{
+			command_payload(x, &command, len);
+
+			command.fields[0] = htons(command.fields[0]);
+
+			command.fields[1] = htons(command.fields[1]);
+
+			fwrite(&command.fields, 2, 2, writer);
+		}
+		else if (*type_pt == 2)
+		{
+			get_gps(x, &info, len);
+
+			fwrite(&info.degrees, 20, one, writer);
+		}
+		else if (*type_pt == 3)
+		{	
+			get_messagepayload(x, &message, total_len, len);
+
+			printf("%s\n", message.length);
+
+			fwrite(message.length, length, one, writer);
+		}
+
+		exit(1);
 	}
 
 	free(fake_buffer);
 
 	free(message.length);
+
+	free(start);
 
 	fclose(writer);
 
