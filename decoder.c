@@ -104,9 +104,9 @@ union gps_header{
 
 int hexDump(void *buf, int len);
 
-int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt, unsigned int *total_length, int *start);
+int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start);
 
-int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count, int *start);
+int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int count, int *start);
 
 
 int main(int argc, char * argv[])
@@ -124,6 +124,7 @@ int main(int argc, char * argv[])
 	int count = 0;
 
 	int excess_headers = 58;
+
 	int global_header = 24;
 
 	unsigned int *type_pt = malloc(sizeof(*type_pt));
@@ -140,9 +141,7 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
-	unsigned char *buf;
-
-	buf = malloc(SIZE);
+	unsigned char *buf = malloc(SIZE);
 
 	memset(buf, '\0', SIZE);
 
@@ -153,7 +152,7 @@ int main(int argc, char * argv[])
 	hexDump(buf, count);
 
 	struct meditrik *stuff = make_meditrik();
-
+	
 	FILE *write;
 	write = fopen("decoded.txt", "w");
 
@@ -213,9 +212,8 @@ int hexDump(void *buf, int len)
 	return 1;
 }
 
-int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsigned int *type_pt, unsigned int *total_length, int *start)
+int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start)
 {
-
 	//version bitmath
 	unsigned int byte_start = buf[*start];
 	byte_start >>= 4;
@@ -281,7 +279,7 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char * buf, unsi
 }
 
 
-int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int count, int *start)
+int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int count, int *start)
 {
 	//maybe they all need to be shorts
 	short glucose = 0;
@@ -445,6 +443,5 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char * buf, int cou
 
 		return 3;
 	}
-
 	return 4;
 }
