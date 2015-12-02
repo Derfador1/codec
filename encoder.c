@@ -58,12 +58,12 @@ struct message_payload {
 	unsigned char *length;
 };
 
-int fill(char * fake_buffer, size_t one, FILE *writer, int *start, unsigned int *len);
+int fill(char * fake_buffer, size_t one, FILE *writer, int *start);
 int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len, unsigned int *len);
 int get_gps(char * x, union gps_header *gps, unsigned int *len);
 int get_statpayload(char * x, union stat_payload *pack, unsigned int *len);
 int command_payload(char * x, union com_payload *command, unsigned int *len);
-int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, int max_byte);
+int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, unsigned int *max_byte);
 int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len, unsigned int *len);
 
 int main(int argc, char * argv[])
@@ -74,7 +74,7 @@ int main(int argc, char * argv[])
 	unsigned int *type_pt = malloc(sizeof(type_pt));
 	unsigned int *total_len = malloc(sizeof(total_len));
 
-	int max_byte = 0;
+	unsigned int max_byte = 0;
 
 	if (argc == 1)
 	{
@@ -107,15 +107,14 @@ int main(int argc, char * argv[])
 	free(total_len);
 }
 
-int fill(char * fake_buffer, size_t one, FILE *writer, int *start, unsigned int *len)
+int fill(char * fake_buffer, size_t one, FILE *writer, int *start)
 {
-	//fill with start number instead of 82 , start at begining is global header(24) + excess headers(58)
-	//second time around fill with excess header
+
+	//int c = *start - excess_headers;
+
 	int c = 0;
 
-	c = *len;
-
-	for (; c < *start; c++)
+	for (c = 0; c < *start; c++)
 	{
 		fwrite(fake_buffer, 1, one, writer);
 	}
@@ -464,7 +463,7 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	return 1;
 }
 
-int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, int max_byte)
+int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, unsigned int *max_byte)
 {
 	union gps_header info;
 	union bytes byte;
@@ -486,7 +485,6 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 
 	int excess_headers = 58;
 	int global_headers = 24;
-	int b = 1;
 
 	int *start = malloc(sizeof(*start));
 
@@ -502,7 +500,10 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	//change start value here so that fill can hav +58
 	//actually might just need fill the fill function
 
-	while (b == 1)
+	printf("Max_byte %d\n", *max_byte);
+	printf("Len %d\n", *len);
+
+	while (*len < *max_byte)
 	{
 		size_t one = 1;
 
@@ -512,7 +513,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 
 		fake_buffer[0] = 0;
 
-		fill(fake_buffer, one, writer, start, len);
+		fill(fake_buffer, one, writer, start);
 
 		get_value(x, &byte, type_pt, total_len, len);
 
@@ -562,7 +563,11 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 			fwrite(message.length, length, one, writer);
 		}
 
-		exit(1);
+
+		printf("Count before next loop %d\n", *start);
+		printf("Len %d\n", *len);
+
+		printf("Count before next loop %d\n", *start);
 	}
 
 	free(fake_buffer);
