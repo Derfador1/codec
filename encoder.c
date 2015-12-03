@@ -183,7 +183,7 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 		}
 		else
 		{	
-			return 0;
+			break;
 		}
 		
 		*len = ftell(reader);
@@ -472,6 +472,8 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	char *fake_buffer = malloc(1);
 
+	//ummmm see if i can only write to the file if I get valid stuff
+
 	FILE *writer;
 
 	writer = fopen(y, "w+");
@@ -514,7 +516,11 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 		if (*type_pt == 0)
 		{
-			get_statpayload(x, &packet, len);
+			if (get_statpayload(x, &packet, len) != 1)
+			{
+				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				exit(1);
+			}
 
 			packet.printer[4] = htons(packet.printer[4]);
 
@@ -526,7 +532,11 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		}
 		else if (*type_pt == 1)
 		{
-			command_payload(x, &command, len);
+			if (command_payload(x, &command, len) != 1)
+			{
+				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				exit(1);
+			}
 
 			command.fields[0] = htons(command.fields[0]);
 
@@ -536,13 +546,21 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		}
 		else if (*type_pt == 2)
 		{
-			get_gps(x, &info, len);
+			if (get_gps(x, &info, len) != 1)
+			{
+				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				exit(1);
+			}
 
 			fwrite(&info.degrees, 20, one, writer);
 		}
 		else if (*type_pt == 3)
 		{	
-			get_messagepayload(x, &message, len);
+			if (get_messagepayload(x, &message, len) != 1)
+			{
+				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				exit(1);
+			}
 
 			size_t length = strlen(message.length);
 
