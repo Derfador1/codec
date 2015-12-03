@@ -102,11 +102,9 @@ union gps_header{
 	unsigned char degrees[20];
 };
 
-int hexDump(void *buf, int len);
+int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start);
 
-int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start);
-
-int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length);
+int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length);
 
 
 int main(int argc, char * argv[])
@@ -128,7 +126,7 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			printf("You successfully opened %s\n", argv[1]);
+			//printf("You successfully opened %s\n", argv[1]);
 		}
 	}
 
@@ -149,14 +147,7 @@ int main(int argc, char * argv[])
 	memset(buf, '\0', SIZE);
 
 	count = read(descrip, buf, SIZE);
-
-	printf("Count of bytes: %d", count);
 	
-	if (hexDump(buf, count) != 1)
-	{
-		fprintf(stderr, "Something wrong happened in hexdump function\n");
-	}
-
 	struct meditrik *stuff = make_meditrik();
 	
 	FILE *write;
@@ -172,9 +163,9 @@ int main(int argc, char * argv[])
 
 	while(*start < count)
 	{
-		bit_seperation(write, stuff, buf, type_pt, total_length, start);
+		bit_seperation(stuff, buf, type_pt, total_length, start);
 
-		field_check(write, type_pt, buf, start, total_length);
+		field_check(type_pt, buf, start, total_length);
 	}
 
 	free(buf);
@@ -192,52 +183,14 @@ int main(int argc, char * argv[])
 	fclose(write);
 }
 
-int hexDump(void *buf, int len)
-{
-	int counter = 0;
-	int start = 82;
-
-	unsigned char * buffer = buf;	
-
-	if (start >= len)
-	{
-		return 0;
-	}
-
-
-	for (counter = 0; counter < len; counter++)
-	{
-		if (counter % 16 == 0) {
-			printf("\n");
-		}
-		else if (counter % 8 == 0) { 
-			printf(" ");
-		}
-		printf ("%02x ", buffer[counter]);
-	}
-	printf("\n\n");
-
-
-	for (counter = start; counter < len; counter++)
-	{
-		if ((counter % 16) == 0) {
-			printf("\n");
-		}
-		printf ("%02x ", buffer[counter]);
-	}
-	printf("\n\n");
-
-	return 1;
-}
-
-int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start)
+int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start)
 {
 	//version bitmath
 	unsigned int byte_start = buf[*start];
 	byte_start >>= 4;
 	medi->version = byte_start;
 	fprintf(stdout, "Version: %d\n", medi->version);
-	fprintf(write, "Version: %d\n", medi->version);
+	//fprintf(write, "Version: %d\n", medi->version);
 
 	//sequence_id bitmath
 	byte_start = buf[*start];
@@ -247,15 +200,15 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsig
 	byte_start2 >>= 3;
 	byte_start += byte_start2;
 	medi->seq_id = byte_start;
-	fprintf(stdout, "Seq _ Id: %d\n", medi->seq_id);
-	fprintf(write, "Sequence: %d\n", medi->seq_id);
+	fprintf(stdout, "Sequence: %d\n", medi->seq_id);
+	//fprintf(write, "Sequence: %d\n", medi->seq_id);
 
 	//type bitmath
 	unsigned char byte_starter = buf[*start];
 	byte_starter &= 7;
 	medi->type = byte_starter;
 	fprintf(stdout, "Type: %d\n", medi->type);
-	fprintf(write, "Type: %d\n", medi->type);
+	//fprintf(write, "Type: %d\n", medi->type);
 	*type_pt = medi-> type;
 
 	//total length
@@ -263,8 +216,6 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsig
 	byte_length_starter <<= 8;
 	byte_length_starter += buf[++(*start)];
 	medi->total_length = byte_length_starter;
-	fprintf(stdout, "Total Length: %d\n", medi->total_length);
-	fprintf(write, "Total Length: %d\n", medi->total_length);
 	*total_length = medi-> total_length;
 
 	//source device id bitmath
@@ -276,8 +227,8 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsig
 	byte_start_source <<= 8;
 	byte_start_source += buf[++(*start)];
 	medi->source_device_id = byte_start_source;
-	fprintf(stdout, "S Device Id: %d\n", medi->source_device_id);
-	fprintf(write, "Source Device: %d\n", medi->source_device_id);
+	fprintf(stdout, "Source Device: %d\n", medi->source_device_id);
+	//fprintf(write, "Source Device: %d\n", medi->source_device_id);
 
 	//dest device id bitmath
 	unsigned int byte_start_dest = buf[++(*start)];
@@ -288,8 +239,8 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsig
 	byte_start_dest <<= 8;
 	byte_start_dest += buf[++(*start)];
 	medi->dest_device_id = byte_start_dest;
-	fprintf(stdout, "D Device Id: %d\n", medi->dest_device_id);
-	fprintf(write, "Destination Device: %d\n", medi->dest_device_id);
+	fprintf(stdout, "Destination Device: %d\n", medi->dest_device_id);
+	//fprintf(write, "Destination Device: %d\n", medi->dest_device_id);
 
 	(*start)++;
 
@@ -297,7 +248,7 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsig
 }
 
 
-int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length)
+int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length)
 {
 	
 	//maybe they all need to be shorts
@@ -327,27 +278,27 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 		*start = *start + counter;
 
 		fprintf(stdout, "Battery power : %.2f%%\n", power.percent * 100);
-		fprintf(write, "Battery power : %.2f%%\n", power.percent * 100);
+		//fprintf(write, "Battery power : %.2f%%\n", power.percent * 100);
 
 		unsigned int glucose_start = buf[*start]; //102
 		glucose_start <<= 8;
 		glucose_start += buf[++(*start)]; // 103
 		glucose = glucose_start;
-		fprintf(write, "Glucose: %d\n", glucose);
+		//fprintf(write, "Glucose: %d\n", glucose);
 		fprintf(stdout, "Glucose: %d\n", glucose);
 
 		unsigned int capsaicin_start = buf[++(*start)];
 		capsaicin_start <<= 8;
 		capsaicin_start += buf[++(*start)];
 		capsaicin = capsaicin_start;
-		fprintf(write, "Capsaicin: %d\n", capsaicin);
+		//fprintf(write, "Capsaicin: %d\n", capsaicin);
 		fprintf(stdout, "Capsaicin: %d\n", capsaicin);
 
 		unsigned int omorfine_start = buf[++(*start)];
 		omorfine_start <<= 8;
 		omorfine_start += buf[++(*start)];
 		omorfine = omorfine_start;
-		fprintf(write, "Omorfine: %d\n", omorfine);
+		//fprintf(write, "Omorfine: %d\n", omorfine);
 		fprintf(stdout, "Omorfine: %d\n", omorfine);
 
 		(*start)++;
@@ -362,7 +313,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 		unsigned int byte_start = buf[*start];
 		byte_start <<= 8;
 		byte_start += buf[++(*start)];
-		fprintf(write, "Command: %d\n", byte_start);
+		fprintf(stdout, "Command: %d\n", byte_start);
 		if (byte_start == 0)
 		{
 			printf("GET STATUS(0)\n");
@@ -372,7 +323,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 			unsigned int glucose = buf[++(*start)];
 			glucose <<= 8;
 			glucose += buf[++(*start)];
-			fprintf(write, "Glucose: %d\n", glucose);
+			//fprintf(write, "Glucose: %d\n", glucose);
 			fprintf(stdout, "Glucose: %d\n", glucose);
 		}
 		else if (byte_start == 2)
@@ -384,7 +335,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 			unsigned int capsaicin = buf[*start];
 			capsaicin <<= 8;
 			capsaicin += buf[++(*start)];
-			fprintf(write, "Capsaicin: %d\n", capsaicin);
+			//fprintf(write, "Capsaicin: %d\n", capsaicin);
 			fprintf(stdout, "Capsaicin: %d\n", capsaicin);
 		}
 		else if (byte_start == 4)
@@ -396,7 +347,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 			unsigned int omorfine = buf[*start];
 			omorfine <<= 8;
 			omorfine += buf[++(*start)];
-			fprintf(write, "Omorfine: %d\n", omorfine);
+			//fprintf(write, "Omorfine: %d\n", omorfine);
 			fprintf(stdout, "Omorfine: %d\n", omorfine);
 		}
 		else if (byte_start == 6)
@@ -408,7 +359,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 			unsigned int sequence_id = buf[*start];
 			sequence_id <<= 8;
 			sequence_id += buf[++(*start)];	
-			fprintf(write, "Seq_param: %d\n", sequence_id);
+			//fprintf(write, "Seq_param: %d\n", sequence_id);
 			fprintf(stdout, "Seq_param: %d\n", sequence_id);
 		}
 
@@ -430,13 +381,13 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 		*start = *start + counter;
 
 		fprintf(stdout, "Longitude: %.9f degree W\n", gps.fields.longs);
-		fprintf(write, "Longitude: %.9f degree W\n", gps.fields.longs);
+		//fprintf(write, "Longitude: %.9f degree W\n", gps.fields.longs);
 
 		fprintf(stdout, "Latitude: %.9f degree N\n", gps.fields.lat);
-		fprintf(write, "Latitude: %.9f degree N\n", gps.fields.lat);
+		///fprintf(write, "Latitude: %.9f degree N\n", gps.fields.lat);
 
 		fprintf(stdout, "Altitude: %.0f ft\n", gps.fields.alt * 6);
-		fprintf(write, "Altitude: %.0f ft\n", gps.fields.alt * 6);
+		//fprintf(write, "Altitude: %.0f ft\n", gps.fields.alt * 6);
 		
 		(*start)++;
 
@@ -451,25 +402,24 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 
 		int *counter = malloc(sizeof(*counter));
 
-		*counter = *start + *total_length;
+		*counter = *start + meditrik_header;
 
 		printf("Counter : %d\n", *counter);
 
 		fprintf(stdout, "Message: ");
-		fprintf(write, "Message: ");
+		//fprintf(write, "Message: ");
 
 		for (i = *start; i < *counter; i++)
 		{
 			fprintf(stdout, "%c", buf[i]);
-			fprintf(write, "%c", buf[i]);
+			//fprintf(write, "%c", buf[i]);
 		}
 		printf("\n");
+		fprintf(stdout, "\n");
 
 		*start = *start + *total_length;
 
 		*start = *start + excess_headers - 2;
-
-		printf("%d\n", *start);
 
 		free(counter);
 
