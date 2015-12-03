@@ -153,12 +153,12 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 
 	fseek(reader, *len, SEEK_SET);
 
+
 	while (fgets(str, 50, reader) != NULL)
 	{
 		if (sscanf(str, "Version: %d\n", &value[count]))
 		{
 			*version = value[count];
-			printf("Version: %d\n", *version);
 			count++;
 		}
 		else if (sscanf(str, "Sequence: %d\n", &value[count]))
@@ -185,9 +185,8 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 		{	
 			break;
 		}
-
+		
 		*len = ftell(reader);
-		printf("%d\n", *len);
 	}
 
 	(*byte).medi.version = *version;
@@ -226,8 +225,6 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 	short *capsaicin = malloc(sizeof(short));
 	short *omorfine = malloc(sizeof(short));
 
-	printf("Length in status payload before:%d\n", *len);
-
 	fseek(reader, *len, SEEK_SET);
 
 	while(fgets(str, 50, reader) != NULL)
@@ -257,7 +254,6 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 		}
 
 		*len = ftell(reader);
-		printf("Stat payload after %d\n", *len);
 	}
 
 	(*pack).payload.battery = (*power/100);
@@ -289,8 +285,6 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 	double *lon = malloc(sizeof(double));
 	float *alt = malloc(sizeof(float));
 
-	printf("Length in gps payload before:%d\n", *len);
-
 	fseek(reader, *len, SEEK_SET);
 
 	while(fgets(str, 50, reader) != NULL)
@@ -316,7 +310,6 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 		}
 
 		*len = ftell(reader);
-		printf("Gps payload after %d\n", *len);
 	}
 
 	(*gps).fields.longs = *lon;
@@ -345,11 +338,11 @@ int command_payload(char * x, union com_payload *command, unsigned int *len)
 	short *com = malloc(sizeof(short));
 	short *par = calloc(one, sizeof(short));
 
+	*par = -1;
+
 	memset(str, '\0', 50);
 	memset(com, '\0', sizeof(short));
 	memset(par, '\0', sizeof(short));
-
-	printf("Length in command payload before:%d\n", *len);
 
 	fseek(reader, *len, SEEK_SET);
 
@@ -359,31 +352,21 @@ int command_payload(char * x, union com_payload *command, unsigned int *len)
 		{
 			printf("Command: %hd\n", *com);
 		}
-		else if (sscanf(str, "Glucose: %hd\n", par))
-		{
-			//
-		}
-		else if(sscanf(str, "Capsaicin: %hd\n", par))
-		{
-			//
-		}
-		else if (sscanf(str, "Omorfine: %hd\n", par))
-		{
-			//
-		}
-		else if (sscanf(str, "Seq_param: %hd", par))
-		{
-			//
-		}
-		else
+
+		sscanf(str, "Glucose: %hd\n", par);
+
+		sscanf(str, "Capsaicin: %hd\n", par);
+
+		sscanf(str, "Omorfine: %hd\n", par);
+
+		sscanf(str, "Seq_param: %hd", par);
+
+		if (*par == -1)
 		{
 			break;
 		}
 
 		*len = ftell(reader);
-		printf("command payload after command %d\n", *len);
-
-
 	}
 
 
@@ -429,8 +412,6 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	memset(buffer, '\0', SIZE);
 	memset(str, '\0', SIZE);
 
-	printf("Length in message payload before:%d\n", *len);
-
 	fseek(reader, *len, SEEK_SET);
 
 	while(fgets(str, SIZE, reader) != NULL)
@@ -448,7 +429,6 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 		}
 
 		*len = ftell(reader);
-		printf("Len %d\n", *len);
 	}
 
 	messages->length = buffer;
@@ -498,7 +478,6 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 	*start = excess_headers + global_headers;
 
 	*counter = 0;
-
 
 	while (*len <= *max_byte)
 	{
