@@ -519,7 +519,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			if (get_statpayload(x, &packet, len) != 1)
 			{
 				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
-				exit(1);
+				break;
 			}
 
 			packet.printer[4] = htons(packet.printer[4]);
@@ -535,7 +535,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			if (command_payload(x, &command, len) != 1)
 			{
 				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
-				exit(1);
+				break;
 			}
 
 			command.fields[0] = htons(command.fields[0]);
@@ -549,7 +549,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			if (get_gps(x, &info, len) != 1)
 			{
 				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
-				exit(1);
+				break;
 			}
 
 			fwrite(&info.degrees, 20, one, writer);
@@ -559,7 +559,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			if (get_messagepayload(x, &message, len) != 1)
 			{
 				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
-				exit(1);
+				break;
 			}
 
 			size_t length = strlen(message.length);
