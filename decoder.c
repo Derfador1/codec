@@ -162,6 +162,12 @@ int main(int argc, char * argv[])
 	FILE *write;
 	write = fopen("decoded.txt", "w");
 
+	if(write == NULL)
+	{
+		fprintf(stderr, "Error opening file\n");
+		exit(1);
+	}
+
 	*start = global_header + excess_headers;
 
 	while(*start < count)
