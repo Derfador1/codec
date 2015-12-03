@@ -100,7 +100,10 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	fseek(reader, -1, SEEK_END);
+	if (fseek(reader, -1, SEEK_END) != 0)
+	{
+		fprintf(stderr, "Error reading the file");
+	}
 
 	max_byte = ftell(reader);
 
