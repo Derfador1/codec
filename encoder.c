@@ -105,6 +105,8 @@ int main(int argc, char * argv[])
 	free(type_pt);
 
 	free(total_len);
+
+	fclose(reader);
 }
 
 int fill(char * fake_buffer, size_t one, FILE *writer, int *start, int *counter)
@@ -175,7 +177,6 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 		{	
 			break;
 		}
-
 
 		*len = ftell(reader);
 		printf("%d\n", *len);
@@ -498,11 +499,6 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	*start = excess_headers + global_headers;
 	*counter = 0;
 
-	/*
-	printf("Max_byte %d\n", *max_byte);
-	printf("start before %d\n", *start);
-	printf("counter before %d\n", *counter);
-	*/
 
 	while (*len <= *max_byte)
 	{
@@ -510,20 +506,19 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 
 		size_t six = 6;
 
-		size_t length = (*total_len - 12);
-
 		fake_buffer[0] = 0;
 
 		fill(fake_buffer, one, writer, start, counter);
 
 		get_value(x, &byte, type_pt, total_len, len);
 
+		size_t length = (*total_len - 12);
+
 		byte.data[0] = htons(byte.data[0]);
 		byte.data[1] = htons(byte.data[1]);
 
 		byte.data2[1] = htonl(byte.data2[1]);
 		byte.data2[2] = htonl(byte.data2[2]);
-
 
 		*start = *start + *total_len;
 
@@ -565,12 +560,16 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 		{	
 			get_messagepayload(x, &message, total_len, len);
 
-			printf("%s\n", message.length);
+			printf("message length %s\n", message.length);
+
+			printf("length %zd\n", length);
 
 			fwrite(message.length, length, one, writer);
 		}
 
 	}
+
+	free(len);
 
 	free(fake_buffer);
 
