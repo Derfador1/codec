@@ -76,6 +76,12 @@ int main(int argc, char * argv[])
 
 	unsigned int max_byte = 0;
 
+	x = argv[1];
+	y = argv[2];
+
+	FILE *reader;
+	reader = fopen(x, "r");
+
 	if (argc == 1)
 	{
 		printf("Please retry with a valid file to open.\n");
@@ -83,14 +89,16 @@ int main(int argc, char * argv[])
 	}
 	else if (argc >= 2)
 	{
-		printf("You have successfully chosen to read from %s\n", argv[1]);
+		if (reader == NULL)
+		{
+			fprintf(stderr, "Error could not open file\n");
+			exit(1);
+		}
+		else
+		{
+			printf("You have successfully chosen to read from %s\n", argv[1]);
+		}
 	}
-
-	x = argv[1];
-	y = argv[2];
-
-	FILE *reader;
-	reader = fopen(x, "r");
 
 	fseek(reader, -1, SEEK_END);
 
@@ -98,7 +106,7 @@ int main(int argc, char * argv[])
 
 	rewind(reader);
 
-	printf("%d\n", max_byte);
+	printf("Max bytes: %d\n", max_byte);
 
 	write_func(x, y, total_len, type_pt, &max_byte);
 
