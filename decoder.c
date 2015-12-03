@@ -111,6 +111,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 
 int main(int argc, char * argv[])
 {
+	int descrip = open(argv[1], O_RDONLY);
+
 	if (argc == 1)
 	{
 		printf("Please retry with a valid file to open.\n");
@@ -118,7 +120,16 @@ int main(int argc, char * argv[])
 	}
 	else if (argc >= 2)
 	{
-		printf("You successfully opened %s\n", argv[1]);
+
+		if (descrip == -1)
+		{
+			fprintf(stderr, "Error could not open file\n");
+			exit(1);
+		}
+		else
+		{
+			printf("You successfully opened %s\n", argv[1]);
+		}
 	}
 
 	int count = 0;
@@ -133,14 +144,6 @@ int main(int argc, char * argv[])
 
 	int *start = malloc(sizeof(*start));
 
-	int descrip = open(argv[1], O_RDONLY);
-
-	if (descrip == -1)
-	{
-		fprintf(stderr, "Error could not open file\n");
-		exit(1);
-	}
-
 	unsigned char *buf = malloc(SIZE);
 
 	memset(buf, '\0', SIZE);
@@ -149,7 +152,10 @@ int main(int argc, char * argv[])
 
 	printf("Count of bytes: %d", count);
 	
-	hexDump(buf, count);
+	if (hexDump(buf, count) != 1)
+	{
+		fprintf(stderr, "Something wrong happened in hexdump function\n");
+	}
 
 	struct meditrik *stuff = make_meditrik();
 	
@@ -158,24 +164,12 @@ int main(int argc, char * argv[])
 
 	*start = global_header + excess_headers;
 
-	int i = 0;
-
 	while(*start < count)
 	{
 		bit_seperation(write, stuff, buf, type_pt, total_length, start);
 
 		field_check(write, type_pt, buf, start, total_length);
-
-		i++;
-	
-		printf("Start: %d\n", *start);
-
-		printf("buf: %d\n", buf[*start]);
-
-		printf("i: %d\n", i);
 	}
-
-	fclose(write);
 
 	free(buf);
 
@@ -188,6 +182,8 @@ int main(int argc, char * argv[])
 	free(start);
 
 	close(descrip);
+
+	fclose(write);
 }
 
 int hexDump(void *buf, int len)
@@ -196,6 +192,12 @@ int hexDump(void *buf, int len)
 	int start = 82;
 
 	unsigned char * buffer = buf;	
+
+	if (start >= len)
+	{
+		return 0;
+	}
+
 
 	for (counter = 0; counter < len; counter++)
 	{
@@ -306,6 +308,7 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 
 	if (*type_pt == 0)
 	{
+		//function //pass *start, buffer, move 4 values glucose etc.. to 
 		printf("Status of Device\n");
 
 		union battery power;
@@ -396,9 +399,9 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 		}
 		else if (byte_start == 7)
 		{	
-			unsigned int sequence_id = buf[96];
+			unsigned int sequence_id = buf[*start];
 			sequence_id <<= 8;
-			sequence_id += buf[97];	
+			sequence_id += buf[++(*start)];	
 			fprintf(write, "Seq_param: %d\n", sequence_id);
 			fprintf(stdout, "Seq_param: %d\n", sequence_id);
 		}
@@ -461,6 +464,8 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *sta
 		*start = *start + excess_headers - 2;
 
 		printf("%d\n", *start);
+
+		free(counter);
 
 		return 3;
 	}
