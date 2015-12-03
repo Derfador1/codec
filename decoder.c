@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#define SIZE 255
+#define SIZE 254
 
 //darn you commit
 
@@ -106,7 +106,7 @@ int hexDump(void *buf, int len);
 
 int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start);
 
-int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int count, int *start);
+int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length);
 
 
 int main(int argc, char * argv[])
@@ -158,11 +158,21 @@ int main(int argc, char * argv[])
 
 	*start = global_header + excess_headers;
 
-	while(buf[*start] != '\0')
+	int i = 0;
+
+	while(*start < count)
 	{
 		bit_seperation(write, stuff, buf, type_pt, total_length, start);
 
-		field_check(write, type_pt, buf, count, start);
+		field_check(write, type_pt, buf, start, total_length);
+
+		i++;
+	
+		printf("Start: %d\n", *start);
+
+		printf("buf: %d\n", buf[*start]);
+
+		printf("i: %d\n", i);
 	}
 
 	fclose(write);
@@ -279,8 +289,9 @@ int bit_seperation(FILE *write, struct meditrik *medi, unsigned char *buf, unsig
 }
 
 
-int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int count, int *start)
+int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length)
 {
+	
 	//maybe they all need to be shorts
 	short glucose = 0;
 	int capsaicin = 0;
@@ -288,6 +299,9 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int coun
 	int counter = 0;
 
 	int excess_headers = 58;
+	int meditrik_header = 12;
+
+	*total_length = *total_length - meditrik_header;
 
 
 	if (*type_pt == 0)
@@ -426,20 +440,27 @@ int field_check(FILE *write, unsigned int *type_pt, unsigned char *buf, int coun
 	{
 		int i = 0;
 
+		int *counter = malloc(sizeof(*counter));
+
+		*counter = *start + *total_length;
+
+		printf("Counter : %d\n", *counter);
+
 		fprintf(stdout, "Message: ");
 		fprintf(write, "Message: ");
 
-
-		for (i = *start; i < count; i++)
+		for (i = *start; i < *counter; i++)
 		{
 			fprintf(stdout, "%c", buf[i]);
 			fprintf(write, "%c", buf[i]);
 		}
 		printf("\n");
 
-		(*start)++;
+		*start = *start + *total_length;
 
-		*start = *start + excess_headers;
+		*start = *start + excess_headers - 2;
+
+		printf("%d\n", *start);
 
 		return 3;
 	}
