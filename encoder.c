@@ -102,7 +102,7 @@ int main(int argc, char * argv[])
 
 	if (fseek(reader, -1, SEEK_END) != 0)
 	{
-		fprintf(stderr, "Error reading the file");
+		fprintf(stderr, "Error reading the file\n");
 	}
 
 	max_byte = ftell(reader);
@@ -111,7 +111,10 @@ int main(int argc, char * argv[])
 
 	printf("Max bytes: %d\n", max_byte);
 
-	write_func(x, y, total_len, type_pt, &max_byte);
+	if(write_func(x, y, total_len, type_pt, &max_byte) != 1)
+	{
+		fprintf(stderr, "Error with write_func function\n");
+	}
 
 	free(type_pt);
 
