@@ -183,7 +183,7 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 		}
 		else
 		{	
-			break;
+			return 0;
 		}
 		
 		*len = ftell(reader);
@@ -250,7 +250,7 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 		}
 		else
 		{
-			break;
+			return 0;
 		}
 
 		*len = ftell(reader);
@@ -306,8 +306,9 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 		}
 		else
 		{
-			break;
+			return 0;
 		}
+
 
 		*len = ftell(reader);
 	}
@@ -425,7 +426,7 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 		}
 		else
 		{
-			break;
+			return 0;
 		}
 
 		*len = ftell(reader);
@@ -479,8 +480,10 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	*counter = 0;
 
+
 	while (*len <= *max_byte)
 	{
+	
 		size_t one = 1;
 
 		size_t six = 6;
@@ -489,7 +492,11 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 		fill(fake_buffer, one, writer, start, counter);
 
-		get_value(x, &byte, type_pt, len);
+		if (get_value(x, &byte, type_pt, len) != 1)
+		{
+			fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+			exit(1);
+		}
 
 		byte.data[0] = htons(byte.data[0]);
 		byte.data[1] = htons(byte.data[1]);
