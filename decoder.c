@@ -251,7 +251,6 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length)
 {
 	
-	//maybe they all need to be shorts
 	short glucose = 0;
 	int capsaicin = 0;
 	int omorfine = 0;
@@ -265,9 +264,6 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 
 	if (*type_pt == 0)
 	{
-		//function //pass *start, buffer, move 4 values glucose etc.. to 
-		printf("Status of Device\n");
-
 		union battery power;
 
 		for (counter = 0; counter < 8; counter++)
@@ -404,8 +400,6 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 
 		*counter = *start + meditrik_header;
 
-		printf("Counter : %d\n", *counter);
-
 		fprintf(stdout, "Message: ");
 		//fprintf(write, "Message: ");
 
@@ -414,7 +408,6 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 			fprintf(stdout, "%c", buf[i]);
 			//fprintf(write, "%c", buf[i]);
 		}
-		printf("\n");
 		fprintf(stdout, "\n");
 
 		*start = *start + *total_length;
