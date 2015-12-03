@@ -55,16 +55,16 @@ union com_payload {
 };
 
 struct message_payload {
-	unsigned char *length;
+	char *length;
 };
 
 int fill(char * fake_buffer, size_t one, FILE *writer, int *start, int *counter);
-int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len, unsigned int *len);
+int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *len);
 int get_gps(char * x, union gps_header *gps, unsigned int *len);
 int get_statpayload(char * x, union stat_payload *pack, unsigned int *len);
 int command_payload(char * x, union com_payload *command, unsigned int *len);
-int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, unsigned int *max_byte);
-int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len, unsigned int *len);
+int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte);
+int get_messagepayload(char * x, struct message_payload *messages, unsigned int *len);
 
 int main(int argc, char * argv[])
 {
@@ -111,7 +111,7 @@ int main(int argc, char * argv[])
 
 	printf("Max bytes: %d\n", max_byte);
 
-	if(write_func(x, y, total_len, type_pt, &max_byte) != 1)
+	if(write_func(x, y, type_pt, &max_byte) != 1)
 	{
 		fprintf(stderr, "Error with write_func function\n");
 	}
@@ -136,7 +136,7 @@ int fill(char * fake_buffer, size_t one, FILE *writer, int *start, int *counter)
 }
 
 
-int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *total_len, unsigned int *len)
+int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -148,7 +148,6 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	int *version = malloc(sizeof(int));
 	int *seq_id = malloc(sizeof(int));
 	int *type = malloc(sizeof(int));
-	int *total_length = malloc(sizeof(int));
 	int *source_device_id = malloc(sizeof(int));
 	int *dest_device_id = malloc(sizeof(int));
 
@@ -170,11 +169,6 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 		else if (sscanf(str, "Type: %d\n", &value[count]))
 		{
 			*type = value[count];
-			count++;
-		}
-		else if (sscanf(str, "Total Length: %d\n", &value[count]))
-		{
-			*total_length = value[count];
 			count++;
 		}
 		else if (sscanf(str, "Source Device: %d\n", &value[count]))
@@ -199,17 +193,14 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	(*byte).medi.version = *version;
 	(*byte).medi.seq_id = *seq_id;
 	(*byte).medi.type = *type;
-	(*byte).medi.total_length = *total_length;
 	(*byte).medi.source_device_id = *source_device_id;
 	(*byte).medi.dest_device_id = *dest_device_id;
 
-	*type_pt = *type;
-	*total_len = *total_length;	
+	*type_pt = *type;	
 
 	free(version);
 	free(seq_id);
 	free(type);
-	free(total_length);
 	free(source_device_id);
 	free(dest_device_id);
 
@@ -372,7 +363,7 @@ int command_payload(char * x, union com_payload *command, unsigned int *len)
 		{
 			//
 		}
-		else if (sscanf(str, "Capsaicin: %hd\n", par))
+		else if(sscanf(str, "Capsaicin: %hd\n", par))
 		{
 			//
 		}
@@ -425,14 +416,14 @@ int command_payload(char * x, union com_payload *command, unsigned int *len)
 	return 1;
 }
 
-int get_messagepayload(char * x, struct message_payload *messages, unsigned int *total_len, unsigned int *len)
+int get_messagepayload(char * x, struct message_payload *messages, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
 
 	char *str = malloc(SIZE);
-	unsigned char *buffer = malloc(SIZE);
-	unsigned char *check_buf = calloc(1, SIZE);
+	char *buffer = malloc(SIZE);
+	char *check_buf = calloc(1, SIZE);
 
 	memset(check_buf, '\0', SIZE);
 	memset(buffer, '\0', SIZE);
@@ -442,15 +433,11 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 
 	fseek(reader, *len, SEEK_SET);
 
-	unsigned int length = 0;
-
-	length = (*total_len - 12);
-
 	while(fgets(str, SIZE, reader) != NULL)
 	{
 		if (sscanf(str, "Message: %s", check_buf))
 		{
-			for (unsigned int i = 0; i < length; i++)
+			for (unsigned int i = 0; i < (strlen(str) - 9); i++)
 			{
 				buffer[i] = str[i + 9];
 			}
@@ -461,7 +448,7 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 		}
 
 		*len = ftell(reader);
-		printf("Message payload after %d\n", *len);
+		printf("Len %d\n", *len);
 	}
 
 	messages->length = buffer;
@@ -475,7 +462,7 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	return 1;
 }
 
-int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_pt, unsigned int *max_byte)
+int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte)
 {
 	union gps_header info;
 	union bytes byte;
@@ -494,8 +481,6 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 
 	*len = 0;
 
-	//memset(len, 0, sizeof(len));
-
 	int excess_headers = 58;
 
 	int global_headers = 24;
@@ -511,6 +496,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 	writer = fopen(y, "w+");
 
 	*start = excess_headers + global_headers;
+
 	*counter = 0;
 
 
@@ -524,9 +510,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 
 		fill(fake_buffer, one, writer, start, counter);
 
-		get_value(x, &byte, type_pt, total_len, len);
-
-		size_t length = (*total_len - 12);
+		get_value(x, &byte, type_pt, len);
 
 		byte.data[0] = htons(byte.data[0]);
 		byte.data[1] = htons(byte.data[1]);
@@ -534,7 +518,7 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 		byte.data2[1] = htonl(byte.data2[1]);
 		byte.data2[2] = htonl(byte.data2[2]);
 
-		*start = *start + *total_len;
+		*start = *start + global_headers;
 
 		*counter = *start;
 
@@ -572,11 +556,9 @@ int write_func(char * x, char * y, unsigned int *total_len, unsigned int *type_p
 		}
 		else if (*type_pt == 3)
 		{	
-			get_messagepayload(x, &message, total_len, len);
+			get_messagepayload(x, &message, len);
 
-			printf("message length %s\n", message.length);
-
-			printf("length %zd\n", length);
+			size_t length = strlen(message.length);
 
 			fwrite(message.length, length, one, writer);
 		}
