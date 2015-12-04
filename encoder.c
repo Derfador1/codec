@@ -342,9 +342,8 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 
 	char *str = malloc(SIZE);
 	short *com = malloc(sizeof(short));
-	short *par = calloc(1, sizeof(short));
+	int *par = calloc(1, sizeof(int));
 
-	*par = -1;
 
 	memset(str, '\0', SIZE);
 	memset(com, '\0', sizeof(short));
@@ -354,32 +353,51 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 
 	while (fgets(str, SIZE, reader) != NULL)
 	{
+		*par = 0;
+
 		if (sscanf(str, "Command: %hd\n", com))
 		{
-			printf("Command: %hd\n", *com);
+			if (*com % 2 == 0)
+			{
+				*par = 0;
+				*even = 1;
+				*len = ftell(reader);
+
+				free(com);
+				free(par);
+				free(str);
+
+				fclose(reader);
+
+				return 1;
+			}
+		}
+		else if (sscanf(str, "Glucose: %d\n", par))
+		{
+			printf("par %d\n", *par);
+		}
+		else if (sscanf(str, "Capsaicin: %d\n", par))
+		{
+			printf("par cap %d\n", *par);
+		}
+		else if (sscanf(str, "Omorfine: %d\n", par))
+		{
+
+		}
+		else if (sscanf(str, "Seq_param: %d", par))
+		{
+
 		}
 
-		sscanf(str, "Glucose: %hd\n", par);
-
-		sscanf(str, "Capsaicin: %hd\n", par);
-
-		sscanf(str, "Omorfine: %hd\n", par);
-
-		sscanf(str, "Seq_param: %hd", par);
-
-		if (*par == -1)
+		if (*par > 32767 || *par < 0) //might need to bee 65535
 		{
+			*len = ftell(reader);
+			printf("Parameter field is to high for a short\n");
 			break;
 		}
 
 		*len = ftell(reader);
 	}
-
-	if (*com % 2 == 0)
-	{
-		*even = 1;
-	}
-
 
 	(*command).payloader.command = *com;
 
@@ -451,6 +469,17 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 	memset(&command, '\0', sizeof(command));
 	memset(&message, 0, sizeof(message));
 
+	/*
+	int meditrik_size = 0;
+	int status_size = 0;
+	int command_size = 0;
+	int gps_size = 0;
+	int message_size = 0;
+
+	meditrik_size = sizeof(byte.data); //12
+	printf("%d\n", meditrik_size);
+	*/
+	
 
 	unsigned int *len = malloc(sizeof(len));
 
@@ -463,8 +492,6 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 	int *counter = malloc(sizeof(int));
 
 	int *start = malloc(sizeof(int));
-
-	int *even = malloc(sizeof(int));
 
 	char *fake_buffer = malloc(1);
 
@@ -479,13 +506,17 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	while (*len <= *max_byte)
 	{
+		int *even = malloc(sizeof(int));
+
+		*even = 0;
+
 		fake_buffer[0] = 0;
 
 		fill(fake_buffer, writer, start, counter);
 
 		if (get_value(x, &byte, type_pt, len) != 1)
 		{
-			fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+			fprintf(stderr, "WOOOOOOOA getvalue\n");
 			exit(1);
 		}
 
@@ -499,7 +530,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 		*counter = *start;
 
-		*start = *start + excess_headers - 2;
+		*start = *start + excess_headers;
 
 		fwrite(&byte.data, 2, 6, writer);
 
@@ -507,7 +538,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		{
 			if (get_statpayload(x, &packet, len) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				fprintf(stderr, "WOOOOOOOA get stat payload\n");
 				break;
 			}
 
@@ -523,7 +554,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		{
 			if (command_payload(x, &command, len, even) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				fprintf(stderr, "WOOOOOOOA shhhhhh command payload\n");
 				break;
 			}
 
@@ -535,7 +566,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			{
 				fwrite(&command.fields, 2, 1, writer);
 			}
-			else //if odd
+			else
 			{
 				fwrite(&command.fields, 2, (sizeof(command.fields)/2), writer);
 			}
@@ -544,7 +575,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		{
 			if (get_gps(x, &info, len) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				fprintf(stderr, "WOOOOOOOA gps\n");
 				break;
 			}
 
@@ -554,7 +585,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		{	
 			if (get_messagepayload(x, &message, len) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA shhhhhh stop that\n");
+				fprintf(stderr, "WOOOOOOOA message\n");
 				break;
 			}
 
@@ -563,6 +594,8 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			fwrite(message.length, length, 1, writer);
 		}
 
+		free(even);
+	
 	}
 
 	free(len);
@@ -572,8 +605,6 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 	free(message.length);
 
 	free(start);
-
-	free(even);
 
 	free(counter);
 
