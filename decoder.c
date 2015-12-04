@@ -104,7 +104,15 @@ union gps_header{
 
 int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start);
 
-int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length);
+int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length, int *command_even);
+
+int status_decode(int *start, unsigned char *buf, int counter, int excess_headers);
+
+int command_decode(int *start, unsigned char * buf, int excess_headers, int *command_even);
+
+int gps_decode(int *start, unsigned char *buf, int counter, int excess_headers);
+
+int message_decode(int *start, unsigned char *buf, unsigned int *total_length, int excess_headers);
 
 
 int main(int argc, char * argv[])
@@ -144,6 +152,8 @@ int main(int argc, char * argv[])
 
 	unsigned char *buf = malloc(SIZE);
 
+	int *command_even = malloc(sizeof(*command_even));
+
 	memset(buf, '\0', SIZE);
 
 	count = read(descrip, buf, SIZE);
@@ -161,12 +171,18 @@ int main(int argc, char * argv[])
 
 	*start = global_header + excess_headers;
 
+	//printf("Command even: %d\n", *command_even);
+
+	*command_even = *command_even + 10;
+
 	while(*start < count)
 	{
 		bit_seperation(stuff, buf, type_pt, total_length, start);
 
-		field_check(type_pt, buf, start, total_length);
+		field_check(type_pt, buf, start, total_length, command_even);
 	}
+
+	free(command_even);
 
 	free(buf);
 
@@ -190,7 +206,6 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 	byte_start >>= 4;
 	medi->version = byte_start;
 	fprintf(stdout, "Version: %d\n", medi->version);
-	//fprintf(write, "Version: %d\n", medi->version);
 
 	//sequence_id bitmath
 	byte_start = buf[*start];
@@ -201,14 +216,12 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 	byte_start += byte_start2;
 	medi->seq_id = byte_start;
 	fprintf(stdout, "Sequence: %d\n", medi->seq_id);
-	//fprintf(write, "Sequence: %d\n", medi->seq_id);
 
 	//type bitmath
 	unsigned char byte_starter = buf[*start];
 	byte_starter &= 7;
 	medi->type = byte_starter;
 	fprintf(stdout, "Type: %d\n", medi->type);
-	//fprintf(write, "Type: %d\n", medi->type);
 	*type_pt = medi-> type;
 
 	//total length
@@ -228,7 +241,6 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 	byte_start_source += buf[++(*start)];
 	medi->source_device_id = byte_start_source;
 	fprintf(stdout, "Source Device: %d\n", medi->source_device_id);
-	//fprintf(write, "Source Device: %d\n", medi->source_device_id);
 
 	//dest device id bitmath
 	unsigned int byte_start_dest = buf[++(*start)];
@@ -240,7 +252,6 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 	byte_start_dest += buf[++(*start)];
 	medi->dest_device_id = byte_start_dest;
 	fprintf(stdout, "Destination Device: %d\n", medi->dest_device_id);
-	//fprintf(write, "Destination Device: %d\n", medi->dest_device_id);
 
 	(*start)++;
 
@@ -248,175 +259,216 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 }
 
 
-int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length)
+int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length, int *command_even)
 {
-	
-	short glucose = 0;
-	int capsaicin = 0;
-	int omorfine = 0;
-	int counter = 0;
+	short counter = 0;
 
 	int excess_headers = 58;
-	int meditrik_header = 12;
-
-	*total_length = *total_length - meditrik_header;
-
 
 	if (*type_pt == 0)
 	{
-		union battery power;
-
-		for (counter = 0; counter < 8; counter++)
+		if (status_decode(start, buf, counter, excess_headers) != 0)
 		{
-			power.tempbuf[counter] = buf[*start + counter];
+			fprintf(stderr, "Error with status_decode\n");
+			exit(1);
 		}
-
-		*start = *start + counter;
-
-		fprintf(stdout, "Battery power : %.2f%%\n", power.percent * 100);
-		//fprintf(write, "Battery power : %.2f%%\n", power.percent * 100);
-
-		unsigned int glucose_start = buf[*start]; //102
-		glucose_start <<= 8;
-		glucose_start += buf[++(*start)]; // 103
-		glucose = glucose_start;
-		//fprintf(write, "Glucose: %d\n", glucose);
-		fprintf(stdout, "Glucose: %d\n", glucose);
-
-		unsigned int capsaicin_start = buf[++(*start)];
-		capsaicin_start <<= 8;
-		capsaicin_start += buf[++(*start)];
-		capsaicin = capsaicin_start;
-		//fprintf(write, "Capsaicin: %d\n", capsaicin);
-		fprintf(stdout, "Capsaicin: %d\n", capsaicin);
-
-		unsigned int omorfine_start = buf[++(*start)];
-		omorfine_start <<= 8;
-		omorfine_start += buf[++(*start)];
-		omorfine = omorfine_start;
-		//fprintf(write, "Omorfine: %d\n", omorfine);
-		fprintf(stdout, "Omorfine: %d\n", omorfine);
-
-		(*start)++;
-
-		*start = *start + excess_headers;
-
+		
 		return 0;
 
 	}
 	else if (*type_pt == 1)
 	{
-		unsigned int byte_start = buf[*start];
-		byte_start <<= 8;
-		byte_start += buf[++(*start)];
-		fprintf(stdout, "Command: %d\n", byte_start);
-		if (byte_start == 0)
+		if (command_decode(start, buf, excess_headers, command_even) != 1)
 		{
-			printf("GET STATUS(0)\n");
-		}
-		else if (byte_start == 1)
-		{
-			unsigned int glucose = buf[++(*start)];
-			glucose <<= 8;
-			glucose += buf[++(*start)];
-			//fprintf(write, "Glucose: %d\n", glucose);
-			fprintf(stdout, "Glucose: %d\n", glucose);
-		}
-		else if (byte_start == 2)
-		{
-			printf("Request GPS packet\n");
-		}
-		else if (byte_start == 3)
-		{
-			unsigned int capsaicin = buf[*start];
-			capsaicin <<= 8;
-			capsaicin += buf[++(*start)];
-			//fprintf(write, "Capsaicin: %d\n", capsaicin);
-			fprintf(stdout, "Capsaicin: %d\n", capsaicin);
-		}
-		else if (byte_start == 4)
-		{
-			printf("Reserved, GET OUT OF HERE\n");
-		}
-		else if (byte_start == 5)
-		{
-			unsigned int omorfine = buf[*start];
-			omorfine <<= 8;
-			omorfine += buf[++(*start)];
-			//fprintf(write, "Omorfine: %d\n", omorfine);
-			fprintf(stdout, "Omorfine: %d\n", omorfine);
-		}
-		else if (byte_start == 6)
-		{
-			printf("Reserved, GET OUT OF HERE\n");
-		}
-		else if (byte_start == 7)
-		{	
-			unsigned int sequence_id = buf[*start];
-			sequence_id <<= 8;
-			sequence_id += buf[++(*start)];	
-			//fprintf(write, "Seq_param: %d\n", sequence_id);
-			fprintf(stdout, "Seq_param: %d\n", sequence_id);
+			fprintf(stderr, "Error with command_decode\n");
+			exit(1);
 		}
 
-		(*start)++;
+				
 
-		*start = *start + excess_headers;
 
 		return 1;
 	}
 	else if (*type_pt == 2)
 	{
-		union gps_header gps;
-		
-		for (counter = 0; counter < 20; counter++)
+		if (gps_decode(start, buf, counter, excess_headers) != 2)
 		{
-			gps.degrees[counter] = buf[*start + counter];
+			fprintf(stderr, "Error with gps_decode\n");
+			exit(1);
 		}
 
-		*start = *start + counter;
-
-		fprintf(stdout, "Longitude: %.9f degree W\n", gps.fields.longs);
-		//fprintf(write, "Longitude: %.9f degree W\n", gps.fields.longs);
-
-		fprintf(stdout, "Latitude: %.9f degree N\n", gps.fields.lat);
-		///fprintf(write, "Latitude: %.9f degree N\n", gps.fields.lat);
-
-		fprintf(stdout, "Altitude: %.0f ft\n", gps.fields.alt * 6);
-		//fprintf(write, "Altitude: %.0f ft\n", gps.fields.alt * 6);
-		
-		(*start)++;
-
-		*start = *start + excess_headers;
-
 		return 2;
-
 	}
 	else if (*type_pt == 3)
 	{
-		int i = 0;
-
-		int *counter = malloc(sizeof(*counter));
-
-		*counter = *start + meditrik_header;
-
-		fprintf(stdout, "Message: ");
-		//fprintf(write, "Message: ");
-
-		for (i = *start; i < *counter; i++)
+		if (message_decode(start, buf, total_length, excess_headers) != 3) //set meditrik and excess header in func
 		{
-			fprintf(stdout, "%c", buf[i]);
-			//fprintf(write, "%c", buf[i]);
+			fprintf(stderr, "Error with message_decode\n");
+			exit(1);
 		}
-		fprintf(stdout, "\n");
-
-		*start = *start + *total_length;
-
-		*start = *start + excess_headers - 2;
-
-		free(counter);
 
 		return 3;
 	}
 	return 4;
+}
+
+int status_decode(int *start, unsigned char *buf, int counter, int excess_headers)
+{
+	short glucose = 0;
+	short capsaicin = 0;
+	short omorfine = 0;
+
+	union battery power;
+
+	for (counter = 0; counter < 8; counter++)
+	{
+		power.tempbuf[counter] = buf[*start + counter];
+	}
+
+	*start = *start + counter;
+
+	fprintf(stdout, "Battery power : %.2f%%\n", power.percent * 100);
+
+	unsigned int glucose_start = buf[*start]; //102
+	glucose_start <<= 8;
+	glucose_start += buf[++(*start)]; // 103
+	glucose = glucose_start;
+	fprintf(stdout, "Glucose: %d\n", glucose);
+
+	unsigned int capsaicin_start = buf[++(*start)];
+	capsaicin_start <<= 8;
+	capsaicin_start += buf[++(*start)];
+	capsaicin = capsaicin_start;
+	fprintf(stdout, "Capsaicin: %d\n", capsaicin);
+
+	unsigned int omorfine_start = buf[++(*start)];
+	omorfine_start <<= 8;
+	omorfine_start += buf[++(*start)];
+	omorfine = omorfine_start;
+	fprintf(stdout, "Omorfine: %d\n", omorfine);
+
+	(*start)++;
+
+	*start = *start + excess_headers;
+
+	return 0;
+}
+
+int command_decode(int *start, unsigned char * buf, int excess_headers, int *command_even)
+{
+	unsigned int byte_start = buf[*start];
+	byte_start <<= 8;
+	byte_start += buf[++(*start)];
+	fprintf(stdout, "Command: %d\n", byte_start);
+
+	if (byte_start == 0)
+	{
+		
+	}
+	else if (byte_start == 1)
+	{
+		unsigned int glucose = buf[++(*start)];
+		glucose <<= 8;
+		glucose += buf[++(*start)];
+		fprintf(stdout, "Glucose: %d\n", glucose);
+	}
+	else if (byte_start == 2)
+	{
+		
+	}
+	else if (byte_start == 3)
+	{
+		unsigned int capsaicin = buf[*start];
+		capsaicin <<= 8;
+		capsaicin += buf[++(*start)];
+		fprintf(stdout, "Capsaicin: %d\n", capsaicin);
+	}
+	else if (byte_start == 4)
+	{
+		
+	}
+	else if (byte_start == 5)
+	{
+		unsigned int omorfine = buf[*start];
+		omorfine <<= 8;
+		omorfine += buf[++(*start)];
+		fprintf(stdout, "Omorfine: %d\n", omorfine);
+	}
+	else if (byte_start == 6)
+	{
+		
+	}
+	else if (byte_start == 7)
+	{	
+		unsigned int sequence_id = buf[*start];
+		sequence_id <<= 8;
+		sequence_id += buf[++(*start)];	
+		fprintf(stdout, "Seq_param: %d\n", sequence_id);
+	}
+
+	(*start)++;
+
+	*start = *start + excess_headers;
+
+	if ((byte_start % 2) == 0)
+	{
+		*command_even = 1;
+	}
+
+	return 1;
+	
+}
+
+int gps_decode(int *start, unsigned char *buf, int counter, int excess_headers)
+{
+	union gps_header gps;
+	
+	for (counter = 0; counter < 20; counter++)
+	{
+		gps.degrees[counter] = buf[*start + counter];
+	}
+
+	*start = *start + counter;
+
+	fprintf(stdout, "Longitude: %.9f degree W\n", gps.fields.longs);
+
+	fprintf(stdout, "Latitude: %.9f degree N\n", gps.fields.lat);
+
+	fprintf(stdout, "Altitude: %.0f ft\n", gps.fields.alt * 6);
+	
+	(*start)++;
+
+	*start = *start + excess_headers;
+
+	return 2;
+}
+
+int message_decode(int *start, unsigned char *buf, unsigned int *total_length, int excess_headers)
+{
+	int meditrik_header = 12;
+
+	*total_length = *total_length - meditrik_header; //check_size
+
+	int i = 0;
+
+	int *counter = malloc(sizeof(*counter));
+
+	*counter = *start + meditrik_header;
+
+	fprintf(stdout, "Message: ");
+
+	for (i = *start; i < *counter; i++)
+	{
+		fprintf(stdout, "%c", buf[i]);
+	}
+
+	fprintf(stdout, "\n");
+
+	*start = *start + *total_length;
+
+	*start = *start + excess_headers - 2;
+
+	free(counter);
+
+	return 3;
 }
