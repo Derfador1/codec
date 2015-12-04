@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
-#define SIZE 255
+#define SIZE 1500
 
 
 struct meditrik {
@@ -141,7 +141,7 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char str[50];
+	char *str = malloc(SIZE);
 	int value[5];
 	unsigned int count = 0;
 
@@ -151,8 +151,9 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	int *source_device_id = malloc(sizeof(int));
 	int *dest_device_id = malloc(sizeof(int));
 
-	fseek(reader, *len, SEEK_SET);
+	memset(str, '\0', SIZE);
 
+	fseek(reader, *len, SEEK_SET);
 
 	while (fgets(str, 50, reader) != NULL)
 	{
@@ -202,6 +203,7 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 	free(type);
 	free(source_device_id);
 	free(dest_device_id);
+	free(str);
 
 	fclose(reader);
 
@@ -214,7 +216,7 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char str[50];
+	char *str = malloc(SIZE);
 	double value1[1];
 	int value2[5];
 	unsigned int count1 = 0;
@@ -224,6 +226,8 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 	short *glucose = malloc(sizeof(short));
 	short *capsaicin = malloc(sizeof(short));
 	short *omorfine = malloc(sizeof(short));
+
+	memset(str, '\0', SIZE);
 
 	fseek(reader, *len, SEEK_SET);
 
@@ -265,6 +269,7 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 	free(glucose);
 	free(capsaicin);
 	free(omorfine);
+	free(str);
 
 	fclose(reader);
 
@@ -277,7 +282,7 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char str[50];
+	char *str = malloc(SIZE);
 	double value[5];
 	unsigned int i = 0;
 
@@ -285,9 +290,11 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 	double *lon = malloc(sizeof(double));
 	float *alt = malloc(sizeof(float));
 
+	memset(str, '\0', SIZE);
+
 	fseek(reader, *len, SEEK_SET);
 
-	while(fgets(str, 50, reader) != NULL)
+	while(fgets(str, SIZE, reader) != NULL)
 	{
 		if (sscanf(str, "Longitude : %lf\n", &value[i]))
 		{
@@ -320,6 +327,7 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 	free(tude);
 	free(lon);
 	free(alt);
+	free(str);
 
 	fclose(reader);
 
@@ -332,20 +340,19 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char str[50];
-
+	char *str = malloc(SIZE);
 	short *com = malloc(sizeof(short));
 	short *par = calloc(1, sizeof(short));
 
 	*par = -1;
 
-	memset(str, '\0', 50);
+	memset(str, '\0', SIZE);
 	memset(com, '\0', sizeof(short));
 	memset(par, '\0', sizeof(short));
 
 	fseek(reader, *len, SEEK_SET);
 
-	while (fgets(str, 50, reader) != NULL)
+	while (fgets(str, SIZE, reader) != NULL)
 	{
 		if (sscanf(str, "Command: %hd\n", com))
 		{
@@ -368,25 +375,6 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 		*len = ftell(reader);
 	}
 
-	/*
-	if (*com == 0)
-	{
-		printf("Get status\n");
-	}
-	else if (*com == 2)
-	{
-		printf("Get GPS data\n");
-	}
-	else if (*com == 4)
-	{
-		printf("Reserved(4)\n");
-	}
-	else if (*com == 6)
-	{
-		printf("Reserved(6)\n");
-	}
-	*/
-
 	if (*com % 2 == 0)
 	{
 		*even = 1;
@@ -399,6 +387,7 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 
 	free(com);
 	free(par);
+	free(str);
 
 	fclose(reader);
 
@@ -478,8 +467,6 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 	int *even = malloc(sizeof(int));
 
 	char *fake_buffer = malloc(1);
-
-	//ummmm see if i can only write to the file if I get valid stuff
 
 	FILE *writer;
 
