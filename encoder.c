@@ -58,13 +58,22 @@ struct message_payload {
 	char *length;
 };
 
+struct mass_frame {
+	union gps_header info;
+	union bytes byte;
+	union stat_payload packet;
+	union com_payload command;
+	struct message_payload message;
+};
+
 int fill(char * fake_buffer, FILE *writer, int *start, int *counter);
-int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *len);
+int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsigned int *len);
 int get_gps(char * x, union gps_header *gps, unsigned int *len);
 int get_statpayload(char * x, union stat_payload *pack, unsigned int *len);
-int command_payload(char * x, union com_payload *command, unsigned int *len, int *even);
+int command_payload(char * x, struct mass_frame *frames, unsigned int *len, int *even);
 int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte);
-int get_messagepayload(char * x, struct message_payload *messages, unsigned int *len);
+int fwrite_func(int length, unsigned int *type_pt, int * even, struct mass_frame *frames, FILE *writer);
+int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len);
 
 int main(int argc, char * argv[])
 {
@@ -92,6 +101,13 @@ int main(int argc, char * argv[])
 		if (reader == NULL)
 		{
 			fprintf(stderr, "Error could not open file\n");
+
+			free(type_pt);
+
+			free(total_len);
+
+			fclose(reader);
+
 			exit(1);
 		}
 		else
@@ -136,7 +152,7 @@ int fill(char * fake_buffer, FILE *writer, int *start, int *counter)
 }
 
 
-int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *len)
+int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -190,11 +206,11 @@ int get_value(char * x, union bytes *byte, unsigned int *type_pt, unsigned int *
 		*len = ftell(reader);
 	}
 
-	(*byte).medi.version = *version;
-	(*byte).medi.seq_id = *seq_id;
-	(*byte).medi.type = *type;
-	(*byte).medi.source_device_id = *source_device_id;
-	(*byte).medi.dest_device_id = *dest_device_id;
+	frames->byte.medi.version = *version;
+	frames->byte.medi.seq_id = *seq_id;
+	frames->byte.medi.type = *type;
+	frames->byte.medi.source_device_id = *source_device_id;
+	frames->byte.medi.dest_device_id = *dest_device_id;
 
 	*type_pt = *type;	
 
@@ -254,6 +270,13 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 		}
 		else
 		{
+			free(power);
+			free(glucose);
+			free(capsaicin);
+			free(omorfine);
+			free(str);
+
+			fclose(reader);
 			return 0;
 		}
 
@@ -306,13 +329,19 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 			*tude = value[i];
 			i++;
 		}
-		else if(sscanf(str, "Altitude : %lf\n", &value[i]))
+		else if(sscanf(str, "Altitude : %lf", &value[i]))
 		{
 			*alt = value[i];
 			i++;
 		}
 		else
 		{
+			free(tude);
+			free(lon);
+			free(alt);
+			free(str);
+
+			fclose(reader);
 			return 0;
 		}
 
@@ -335,7 +364,7 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 }
 
 
-int command_payload(char * x, union com_payload *command, unsigned int *len, int *even)
+int command_payload(char * x, struct mass_frame *frames, unsigned int *len, int *even)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -362,6 +391,8 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 				*par = 0;
 				*even = 1;
 				*len = ftell(reader);
+
+				frames->command.payloader.command = *com;
 
 				free(com);
 				free(par);
@@ -399,9 +430,9 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 		*len = ftell(reader);
 	}
 
-	(*command).payloader.command = *com;
+	frames->command.payloader.command = *com;
 
-	(*command).payloader.parameter = *par;
+	frames->command.payloader.parameter = *par;
 
 	free(com);
 	free(par);
@@ -412,7 +443,7 @@ int command_payload(char * x, union com_payload *command, unsigned int *len, int
 	return 1;
 }
 
-int get_messagepayload(char * x, struct message_payload *messages, unsigned int *len)
+int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len)
 {
 	FILE *reader;
 	reader = fopen(x, "r");
@@ -438,13 +469,19 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 		}
 		else
 		{
+			free(check_buf);
+
+			free(str);
+
+			fclose(reader);
+
 			return 0;
 		}
 
 		*len = ftell(reader);
 	}
 
-	messages->length = buffer;
+	frames->message.length = buffer;
 
 	free(check_buf);
 
@@ -455,31 +492,15 @@ int get_messagepayload(char * x, struct message_payload *messages, unsigned int 
 	return 1;
 }
 
-int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte)
+int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte) //change name
 {
-	union gps_header info;
-	union bytes byte;
-	union stat_payload packet;
-	union com_payload command;
-	struct message_payload message;
+	*type_pt = 5;
 
-	memset(&byte, '\0', sizeof(byte));
-	memset(&info, '\0', sizeof(info));
-	memset(&packet, '\0', sizeof(packet));
-	memset(&command, '\0', sizeof(command));
-	memset(&message, 0, sizeof(message));
+	struct mass_frame frames;
 
-	/*
-	int meditrik_size = 0;
-	int status_size = 0;
-	int command_size = 0;
-	int gps_size = 0;
-	int message_size = 0;
+	memset(&frames, '\0', sizeof(frames));
 
-	meditrik_size = sizeof(byte.data); //12
-	printf("%d\n", meditrik_size);
-	*/
-	
+	memset(&frames.byte, '\0', sizeof(frames.byte));
 
 	unsigned int *len = malloc(sizeof(len));
 
@@ -493,7 +514,9 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	int *start = malloc(sizeof(int));
 
-	char *fake_buffer = malloc(1);
+	char fake_buffer[1];
+
+	fake_buffer[0] = 0;
 
 	FILE *writer;
 
@@ -503,28 +526,25 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	*counter = 0;
 
+	int *even = malloc(sizeof(int));
 
 	while (*len <= *max_byte)
 	{
-		int *even = malloc(sizeof(int));
+		int status_size = 0;
+		int command_size = 0;
+		int gps_size = 0;
+		int message_size = 0;
+		int length = 0;
 
 		*even = 0;
 
-		fake_buffer[0] = 0;
-
 		fill(fake_buffer, writer, start, counter);
 
-		if (get_value(x, &byte, type_pt, len) != 1)
+		if (get_value(x, &frames, type_pt, len) != 1)
 		{
-			fprintf(stderr, "WOOOOOOOA getvalue\n");
+			fprintf(stderr, "WOOOOOOOA get value error , non-encodable\n");
 			exit(1);
 		}
-
-		byte.data[0] = htons(byte.data[0]);
-		byte.data[1] = htons(byte.data[1]);
-
-		byte.data2[1] = htonl(byte.data2[1]);
-		byte.data2[2] = htonl(byte.data2[2]);
 
 		*start = *start + global_headers;
 
@@ -532,83 +552,136 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 		*start = *start + excess_headers;
 
-		fwrite(&byte.data, 2, 6, writer);
-
 		if (*type_pt == 0)
 		{
-			if (get_statpayload(x, &packet, len) != 1)
+			if (get_statpayload(x, &frames.packet, len) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA get stat payload\n");
+				fprintf(stderr, "WOOOOOOOA get stat payload error , non-encodable\n");
 				break;
 			}
 
-			packet.printer[4] = htons(packet.printer[4]);
-
-			packet.printer[5] = htons(packet.printer[5]);
-
-			packet.printer[6] = htons(packet.printer[6]);
-
-			fwrite(&packet.printer, 2, sizeof(packet.printer)/2, writer);
+			status_size = sizeof(frames.packet.printer); //12
+			length = status_size;
 		}
 		else if (*type_pt == 1)
 		{
-			if (command_payload(x, &command, len, even) != 1)
+
+			if (command_payload(x, &frames, len, even) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA shhhhhh command payload\n");
+				fprintf(stderr, "WOOOOOOOA shhhhhh command payload error , non-encodable\n");
 				break;
 			}
 
-			command.fields[0] = htons(command.fields[0]);
-
-			command.fields[1] = htons(command.fields[1]);
-
-			if  (*even == 1)
-			{
-				fwrite(&command.fields, 2, 1, writer);
+			if (*even == 1)
+			{	
+				command_size = sizeof(frames.command.fields)/2; //12
+				length = command_size;
 			}
 			else
 			{
-				fwrite(&command.fields, 2, (sizeof(command.fields)/2), writer);
+				command_size = sizeof(frames.command.fields); //12
+				length = command_size;
 			}
+
 		}
 		else if (*type_pt == 2)
 		{
-			if (get_gps(x, &info, len) != 1)
+			if (get_gps(x, &frames.info, len) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA gps\n");
+				fprintf(stderr, "WOOOOOOOA gps error , non-encodable\n");
 				break;
 			}
 
-			fwrite(&info.degrees, 20, 1, writer);
+			gps_size = sizeof(frames.info.degrees); //12
+			length = gps_size;
 		}
 		else if (*type_pt == 3)
 		{	
-			if (get_messagepayload(x, &message, len) != 1)
+			if (get_messagepayload(x, &frames, len) != 1)
 			{
-				fprintf(stderr, "WOOOOOOOA message\n");
+				fprintf(stderr, "WOOOOOOOA message error , non-encodable\n");
 				break;
 			}
 
-			size_t length = strlen(message.length);
+			message_size = strlen(frames.message.length) - 1; //12 , and minus one for the null byte
+			length = message_size;
 
-			fwrite(message.length, length, 1, writer);
 		}
 
-		free(even);
-	
+		fwrite_func(length, type_pt, even, &frames, writer);
 	}
 
+	free(even);
+
 	free(len);
-
-	free(fake_buffer);
-
-	free(message.length);
 
 	free(start);
 
 	free(counter);
 
+	free(frames.message.length);
+
 	fclose(writer);
+
+	return 1;
+}
+
+int fwrite_func(int length, unsigned int *type_pt, int * even, struct mass_frame *frames, FILE *writer)
+{
+
+	frames->byte.data[0] = htons(frames->byte.data[0]);
+	frames->byte.data[1] = htons(frames->byte.data[1]);
+
+	frames->byte.data2[1] = htonl(frames->byte.data2[1]);
+	frames->byte.data2[2] = htonl(frames->byte.data2[2]);
+
+	int meditrik_size = 0;
+
+	meditrik_size = sizeof(frames->byte.data); //12
+
+	length = meditrik_size + length;
+
+	frames->byte.medi.total_length = length;
+
+	frames->byte.data[1] = htons(frames->byte.data[1]);
+	
+	fwrite((frames)->byte.data, 2, 6, writer);
+
+	if(*type_pt == 0)
+	{
+		frames->packet.printer[4] = htons(frames->packet.printer[4]);
+
+		frames->packet.printer[5] = htons(frames->packet.printer[5]);
+
+		frames->packet.printer[6] = htons(frames->packet.printer[6]);
+
+		fwrite(frames->packet.printer, 2, sizeof(frames->packet.printer)/2, writer);
+	}
+	else if (*type_pt == 1)
+	{
+		frames->command.fields[0] = htons(frames->command.fields[0]);
+
+		frames->command.fields[1] = htons(frames->command.fields[1]);
+
+		if  (*even == 1)
+		{
+			fwrite(&frames->command.fields, 2, 1, writer);
+		}
+		else
+		{
+			fwrite(frames->command.fields, 2, (sizeof(frames->command.fields)/2), writer);
+		}
+	}
+	else if (*type_pt == 2)
+	{
+		fwrite(&frames->info.degrees, 20, 1, writer);
+	}
+	else if (*type_pt == 3)
+	{
+		size_t mes_len = strlen(frames->message.length);
+
+		fwrite(frames->message.length, (mes_len - 1), 1, writer);
+	}
 
 	return 1;
 }
