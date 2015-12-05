@@ -83,6 +83,10 @@ int main(int argc, char * argv[])
 	unsigned int *type_pt = malloc(sizeof(type_pt));
 	unsigned int *total_len = malloc(sizeof(total_len));
 
+	*type_pt = 5;
+
+	printf("Type %d\n", *type_pt);
+
 	unsigned int max_byte = 0;
 
 	x = argv[1];
@@ -388,6 +392,10 @@ int command_payload(char * x, struct mass_frame *frames, unsigned int *len, int 
 		{
 			if (*com % 2 == 0)
 			{
+				printf("com %d\n", *com);
+
+				*com = 10;
+				
 				*par = 0;
 				*even = 1;
 				*len = ftell(reader);
@@ -475,6 +483,8 @@ int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len)
 
 			fclose(reader);
 
+			free(buffer);
+
 			return 0;
 		}
 
@@ -494,8 +504,6 @@ int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len)
 
 int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte) //change name
 {
-	*type_pt = 5;
-
 	struct mass_frame frames;
 
 	memset(&frames, '\0', sizeof(frames));
@@ -528,6 +536,8 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	int *even = malloc(sizeof(int));
 
+	*even = 10;
+
 	while (*len <= *max_byte)
 	{
 		int status_size = 0;
@@ -543,7 +553,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 		if (get_value(x, &frames, type_pt, len) != 1)
 		{
 			fprintf(stderr, "WOOOOOOOA get value error , non-encodable\n");
-			exit(1);
+			break;
 		}
 
 		*start = *start + global_headers;
@@ -606,6 +616,10 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			message_size = strlen(frames.message.length) - 1; //12 , and minus one for the null byte
 			length = message_size;
 
+		}
+		else
+		{
+			break;
 		}
 
 		fwrite_func(length, type_pt, even, &frames, writer);
