@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#define SIZE 254
+#define SIZE 1500
 
 //darn you commit
 
@@ -76,10 +76,10 @@ struct meditrik{
 
 };
 
-struct meditrik *make_meditrik(void)
+struct meditrik *make_meditrik(void) //used to initialize meditrik structure when invoked
 {
 	struct meditrik *meditrik = malloc(sizeof(struct meditrik));
-	if(!meditrik) {
+	if(!meditrik) { //makes sure there is something to malloc
 		return NULL;
 	}
 
@@ -117,7 +117,7 @@ int message_decode(int *start, unsigned char *buf, unsigned int *total_length, i
 
 int main(int argc, char * argv[])
 {
-	int descrip = open(argv[1], O_RDONLY);
+	int descrip = open(argv[1], O_RDONLY); //gives an integer if open works successfully 
 
 	if (argc == 1)
 	{
@@ -154,26 +154,30 @@ int main(int argc, char * argv[])
 
 	memset(buf, '\0', SIZE);
 
-	count = read(descrip, buf, SIZE);
+	count = read(descrip, buf, SIZE); //sets count to integer value returned by read, which is number of things read
 	
-	struct meditrik *stuff = make_meditrik();
+	struct meditrik *stuff = make_meditrik(); //make meditrik to malloc space
 	
 	FILE *write;
 	write = fopen("decoded.txt", "w");
 
-	if(write == NULL)
+	if(write == NULL) //checks to see if fopen worked correctly
 	{
 		fprintf(stderr, "Error opening file\n");
 		exit(1);
 	}
 
-	*start = global_header + excess_headers;
+	*start = global_header + excess_headers; //gives the inital start position in buffer
 
-	while(*start < count)
+	while(*start < count) //loops until no more bytes in buffer
 	{
 		bit_seperation(stuff, buf, type_pt, total_length, start);
 
-		field_check(type_pt, buf, start, total_length);
+		if (field_check(type_pt, buf, start, total_length) != 1)
+		{
+			fprintf(stderr, "Error has occured in field checking\n");
+			break;
+		}
 	}
 	free(buf);
 
@@ -195,7 +199,7 @@ int main(int argc, char * argv[])
 int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start)
 {
 	//version bitmath
-	unsigned int byte_start = buf[*start];
+	unsigned int byte_start = buf[*start]; //used to increment position in buffer
 	byte_start >>= 4;
 	medi->version = byte_start;
 	fprintf(stdout, "Version: %d\n", medi->version);
@@ -258,15 +262,17 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 
 	int excess_headers = 58;
 
+	//checks againt functions based on type
+
 	if (*type_pt == 0)
 	{
 		if (status_decode(start, buf, counter, excess_headers) != 0)
 		{
 			fprintf(stderr, "Error with status_decode\n");
-			exit(1);
+			return 0;
 		}
 		
-		return 0;
+		return 1;
 
 	}
 	else if (*type_pt == 1)
@@ -274,10 +280,8 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 		if (command_decode(start, buf, excess_headers) != 1)
 		{
 			fprintf(stderr, "Error with command_decode\n");
-			exit(1);
+			return 0;
 		}
-
-				
 
 
 		return 1;
@@ -287,22 +291,25 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 		if (gps_decode(start, buf, counter, excess_headers) != 2)
 		{
 			fprintf(stderr, "Error with gps_decode\n");
-			exit(1);
+			return 0;
 		}
 
-		return 2;
+		return 1;
 	}
 	else if (*type_pt == 3)
 	{
 		if (message_decode(start, buf, total_length, excess_headers) != 3) //set meditrik and excess header in func
 		{
 			fprintf(stderr, "Error with message_decode\n");
-			exit(1);
+			return 0;
 		}
 
-		return 3;
+		return 1;
 	}
-	return 4;
+	else
+	{
+		return 0;
+	}
 }
 
 int status_decode(int *start, unsigned char *buf, int counter, int excess_headers)
@@ -313,18 +320,18 @@ int status_decode(int *start, unsigned char *buf, int counter, int excess_header
 
 	union battery power;
 
-	for (counter = 0; counter < 8; counter++)
+	for (counter = 0; counter < 8; counter++) //counts number of places needed for each field
 	{
-		power.tempbuf[counter] = buf[*start + counter];
+		power.tempbuf[counter] = buf[*start + counter]; //stores the places in temp buffer
 	}
 
 	*start = *start + counter;
 
 	fprintf(stdout, "Battery power : %.2f%%\n", power.percent * 100);
 
-	unsigned int glucose_start = buf[*start]; //102
+	unsigned int glucose_start = buf[*start]; 
 	glucose_start <<= 8;
-	glucose_start += buf[++(*start)]; // 103
+	glucose_start += buf[++(*start)];
 	glucose = glucose_start;
 	fprintf(stdout, "Glucose: %d\n", glucose);
 
@@ -342,7 +349,7 @@ int status_decode(int *start, unsigned char *buf, int counter, int excess_header
 
 	(*start)++;
 
-	*start = *start + excess_headers;
+	*start = *start + excess_headers; //adds 58 to start so it can check for multiple packets
 
 	return 0;
 }
@@ -354,13 +361,14 @@ int command_decode(int *start, unsigned char * buf, int excess_headers)
 	byte_start += buf[++(*start)];
 	fprintf(stdout, "Command: %d\n", byte_start);
 
+	//checks to see if what field goes with the command field
 	if (byte_start == 0)
 	{
 		
 	}
 	else if (byte_start == 1)
 	{
-		unsigned int glucose = buf[++(*start)];
+		unsigned int glucose = buf[++(*start)]; //used to find glucose
 		glucose <<= 8;
 		glucose += buf[++(*start)];
 		fprintf(stdout, "Glucose: %d\n", glucose);
@@ -371,7 +379,7 @@ int command_decode(int *start, unsigned char * buf, int excess_headers)
 	}
 	else if (byte_start == 3)
 	{
-		unsigned int capsaicin = buf[*start];
+		unsigned int capsaicin = buf[*start]; //used to find capsaicin
 		capsaicin <<= 8;
 		capsaicin += buf[++(*start)];
 		fprintf(stdout, "Capsaicin: %d\n", capsaicin);
@@ -382,7 +390,7 @@ int command_decode(int *start, unsigned char * buf, int excess_headers)
 	}
 	else if (byte_start == 5)
 	{
-		unsigned int omorfine = buf[*start];
+		unsigned int omorfine = buf[*start];//used to fine omorfine
 		omorfine <<= 8;
 		omorfine += buf[++(*start)];
 		fprintf(stdout, "Omorfine: %d\n", omorfine);
@@ -393,7 +401,7 @@ int command_decode(int *start, unsigned char * buf, int excess_headers)
 	}
 	else if (byte_start == 7)
 	{	
-		unsigned int sequence_id = buf[*start];
+		unsigned int sequence_id = buf[*start]; //used to find seq_param
 		sequence_id <<= 8;
 		sequence_id += buf[++(*start)];	
 		fprintf(stdout, "Seq_param: %d\n", sequence_id);
@@ -418,9 +426,9 @@ int gps_decode(int *start, unsigned char *buf, int counter, int excess_headers)
 
 	*start = *start + counter;
 
-	fprintf(stdout, "Longitude: %.9f degree W\n", gps.fields.longs);
+	fprintf(stdout, "Longitude: %.9f degree W\n", gps.fields.longs); //fills longitude, latitude, alt from what was stored
 
-	fprintf(stdout, "Latitude: %.9f degree N\n", gps.fields.lat);
+	fprintf(stdout, "Latitude: %.9f degree N\n", gps.fields.lat);	//in buffer and moves down based on types of the three
 
 	fprintf(stdout, "Altitude: %.0f ft\n", gps.fields.alt * 6);
 	
@@ -435,19 +443,19 @@ int message_decode(int *start, unsigned char *buf, unsigned int *total_length, i
 {
 	int meditrik_header = 12;
 
-	*total_length = *total_length - meditrik_header; //check_size
+	*total_length = *total_length - meditrik_header; //gives total payload size
 
 	int i = 0;
 
 	int *counter = malloc(sizeof(*counter));
 
-	*counter = *start + *total_length;
+	*counter = *start + *total_length; //used for counting through the size of the message
 
 	fprintf(stdout, "Message: ");
 
 	for (i = *start; i < *counter; i++)
 	{
-		fprintf(stdout, "%c", buf[i]);
+		fprintf(stdout, "%c", buf[i]); //writes a each single character to stdout
 	}
 
 	fprintf(stdout, "\n");
