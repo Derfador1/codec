@@ -590,7 +590,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 		fill(fake_buffer, writer, start, counter);
 
-		if (get_value(x, &frames, type_pt, len) != 1)//if anything but 1 is returned the exit
+		if (get_value(x, &frames, type_pt, len) != 1)//if anything but 1 is returned the break
 		{
 			fprintf(stderr, "WOOOOOOOA get value error , non-encodable\n");
 			break;
@@ -658,7 +658,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			length = message_size;
 
 		}
-		else //if type isnt one of the correct options the free and exit
+		else //if type isnt one of the correct options the free and return 0
 		{
 			free(even);
 			free(len);
@@ -679,7 +679,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			free(frames.message.length);
 			fclose(writer);
 			fprintf(stderr, "Error type is not correct\n");
-			exit(1);
+			return 0;
 		}
 	}
 
