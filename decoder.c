@@ -104,11 +104,11 @@ union gps_header{
 
 int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type_pt, unsigned int *total_length, int *start);
 
-int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length, int *command_even);
+int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length);
 
 int status_decode(int *start, unsigned char *buf, int counter, int excess_headers);
 
-int command_decode(int *start, unsigned char * buf, int excess_headers, int *command_even);
+int command_decode(int *start, unsigned char * buf, int excess_headers);
 
 int gps_decode(int *start, unsigned char *buf, int counter, int excess_headers);
 
@@ -152,8 +152,6 @@ int main(int argc, char * argv[])
 
 	unsigned char *buf = malloc(SIZE);
 
-	int *command_even = malloc(sizeof(*command_even));
-
 	memset(buf, '\0', SIZE);
 
 	count = read(descrip, buf, SIZE);
@@ -171,19 +169,12 @@ int main(int argc, char * argv[])
 
 	*start = global_header + excess_headers;
 
-	//printf("Command even: %d\n", *command_even);
-
-	*command_even = *command_even + 10;
-
 	while(*start < count)
 	{
 		bit_seperation(stuff, buf, type_pt, total_length, start);
 
-		field_check(type_pt, buf, start, total_length, command_even);
+		field_check(type_pt, buf, start, total_length);
 	}
-
-	free(command_even);
-
 	free(buf);
 
 	free(stuff);
@@ -193,6 +184,8 @@ int main(int argc, char * argv[])
 	free(total_length);
 
 	free(start);
+
+	
 
 	close(descrip);
 
@@ -259,7 +252,7 @@ int bit_seperation(struct meditrik *medi, unsigned char *buf, unsigned int *type
 }
 
 
-int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length, int *command_even)
+int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned int *total_length)
 {
 	short counter = 0;
 
@@ -278,7 +271,7 @@ int field_check(unsigned int *type_pt, unsigned char *buf, int *start, unsigned 
 	}
 	else if (*type_pt == 1)
 	{
-		if (command_decode(start, buf, excess_headers, command_even) != 1)
+		if (command_decode(start, buf, excess_headers) != 1)
 		{
 			fprintf(stderr, "Error with command_decode\n");
 			exit(1);
@@ -354,7 +347,7 @@ int status_decode(int *start, unsigned char *buf, int counter, int excess_header
 	return 0;
 }
 
-int command_decode(int *start, unsigned char * buf, int excess_headers, int *command_even)
+int command_decode(int *start, unsigned char * buf, int excess_headers)
 {
 	unsigned int byte_start = buf[*start];
 	byte_start <<= 8;
@@ -410,11 +403,6 @@ int command_decode(int *start, unsigned char * buf, int excess_headers, int *com
 
 	*start = *start + excess_headers;
 
-	if ((byte_start % 2) == 0)
-	{
-		*command_even = 1;
-	}
-
 	return 1;
 	
 }
@@ -453,7 +441,7 @@ int message_decode(int *start, unsigned char *buf, unsigned int *total_length, i
 
 	int *counter = malloc(sizeof(*counter));
 
-	*counter = *start + meditrik_header;
+	*counter = *start + *total_length;
 
 	fprintf(stdout, "Message: ");
 
