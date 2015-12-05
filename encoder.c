@@ -66,6 +66,8 @@ struct mass_frame {
 	struct message_payload message;
 };
 
+
+
 int fill(char * fake_buffer, FILE *writer, int *start, int *counter);
 int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsigned int *len);
 int get_gps(char * x, union gps_header *gps, unsigned int *len);
@@ -83,10 +85,6 @@ int main(int argc, char * argv[])
 	unsigned int *type_pt = malloc(sizeof(type_pt));
 	unsigned int *total_len = malloc(sizeof(total_len));
 
-	*type_pt = 5;
-
-	printf("Type %d\n", *type_pt);
-
 	unsigned int max_byte = 0;
 
 	x = argv[1];
@@ -102,7 +100,7 @@ int main(int argc, char * argv[])
 	}
 	else if (argc >= 2)
 	{
-		if (reader == NULL)
+		if (reader == NULL) //if reader returns null then free and exit
 		{
 			fprintf(stderr, "Error could not open file\n");
 
@@ -120,14 +118,14 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	if (fseek(reader, -1, SEEK_END) != 0)
+	if (fseek(reader, -1, SEEK_END) != 0) //reads to the end of the file
 	{
 		fprintf(stderr, "Error reading the file\n");
 	}
 
-	max_byte = ftell(reader);
+	max_byte = ftell(reader); //stores he number of bytes in the file
 
-	rewind(reader);
+	rewind(reader); //rewinds pointer to beginning of file for next use
 
 	printf("Max bytes: %d\n", max_byte);
 
@@ -149,7 +147,7 @@ int fill(char * fake_buffer, FILE *writer, int *start, int *counter)
 
 	for (c = *counter; c < *start; c++)
 	{
-		fwrite(fake_buffer, 1, 1, writer);
+		fwrite(fake_buffer, 1, 1, writer); //write 0 to file wherever excess0's are needed
 	}
 
 	return 1;
@@ -161,7 +159,13 @@ int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsign
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char *str = malloc(SIZE);
+	if (reader == NULL)
+	{
+		fprintf(stderr, "Error could not open file\n");
+		return 0;
+	}
+
+	char *str = malloc(50);
 	int value[5];
 	unsigned int count = 0;
 
@@ -171,16 +175,16 @@ int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsign
 	int *source_device_id = malloc(sizeof(int));
 	int *dest_device_id = malloc(sizeof(int));
 
-	memset(str, '\0', SIZE);
+	memset(str, '\0', 50);
 
-	fseek(reader, *len, SEEK_SET);
+	fseek(reader, *len, SEEK_SET); //seeks to current pointer position in file 
 
 	while (fgets(str, 50, reader) != NULL)
 	{
-		if (sscanf(str, "Version: %d\n", &value[count]))
+		if (sscanf(str, "Version: %d\n", &value[count])) //reades the digit in version into value
 		{
-			*version = value[count];
-			count++;
+			*version = value[count]; //switches the value just stored to the pointer version
+			count++; //  increments place in value array
 		}
 		else if (sscanf(str, "Sequence: %d\n", &value[count]))
 		{
@@ -210,13 +214,15 @@ int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsign
 		*len = ftell(reader);
 	}
 
+
+	//set stored pointer vars into there seperate fields in the struct
 	frames->byte.medi.version = *version;
 	frames->byte.medi.seq_id = *seq_id;
 	frames->byte.medi.type = *type;
 	frames->byte.medi.source_device_id = *source_device_id;
 	frames->byte.medi.dest_device_id = *dest_device_id;
 
-	*type_pt = *type;	
+	*type_pt = *type; //stores type pointer for future use
 
 	free(version);
 	free(seq_id);
@@ -225,7 +231,7 @@ int get_value(char * x, struct mass_frame *frames, unsigned int *type_pt, unsign
 	free(dest_device_id);
 	free(str);
 
-	fclose(reader);
+	fclose(reader);	
 
 	return 1;
 }
@@ -236,7 +242,13 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char *str = malloc(SIZE);
+	if (reader == NULL)
+	{
+		fprintf(stderr, "Error could not open file\n");
+		return 0;
+	}
+
+	char *str = malloc(50);
 	double value1[1];
 	int value2[5];
 	unsigned int count1 = 0;
@@ -247,7 +259,7 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 	short *capsaicin = malloc(sizeof(short));
 	short *omorfine = malloc(sizeof(short));
 
-	memset(str, '\0', SIZE);
+	memset(str, '\0', 50);
 
 	fseek(reader, *len, SEEK_SET);
 
@@ -274,6 +286,7 @@ int get_statpayload(char *x, union stat_payload *pack, unsigned int *len)
 		}
 		else
 		{
+			//if one of the above isnt found free and return 0 as error
 			free(power);
 			free(glucose);
 			free(capsaicin);
@@ -309,7 +322,13 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char *str = malloc(SIZE);
+	if (reader == NULL)
+	{
+		fprintf(stderr, "Error could not open file\n");
+		return 0;
+	}
+
+	char *str = malloc(50);
 	double value[5];
 	unsigned int i = 0;
 
@@ -317,11 +336,11 @@ int get_gps(char * x, union gps_header *gps, unsigned int *len)
 	double *lon = malloc(sizeof(double));
 	float *alt = malloc(sizeof(float));
 
-	memset(str, '\0', SIZE);
+	memset(str, '\0', 50);
 
 	fseek(reader, *len, SEEK_SET);
 
-	while(fgets(str, SIZE, reader) != NULL)
+	while(fgets(str, 50, reader) != NULL)
 	{
 		if (sscanf(str, "Longitude : %lf\n", &value[i]))
 		{
@@ -373,34 +392,37 @@ int command_payload(char * x, struct mass_frame *frames, unsigned int *len, int 
 	FILE *reader;
 	reader = fopen(x, "r");
 
-	char *str = malloc(SIZE);
+	if (reader == NULL)
+	{
+		fprintf(stderr, "Error could not open file\n");
+		return 0;
+	}
+
+	char *str = malloc(50);
 	short *com = malloc(sizeof(short));
 	int *par = calloc(1, sizeof(int));
 
 
-	memset(str, '\0', SIZE);
+	memset(str, '\0', 50);
 	memset(com, '\0', sizeof(short));
 	memset(par, '\0', sizeof(short));
 
 	fseek(reader, *len, SEEK_SET);
 
-	while (fgets(str, SIZE, reader) != NULL)
+	while (fgets(str, 50, reader) != NULL)
 	{
-		*par = 0;
+		*par = 0; //sets par to valid number
 
 		if (sscanf(str, "Command: %hd\n", com))
 		{
+			//checks to see if command is even
 			if (*com % 2 == 0)
 			{
-				printf("com %d\n", *com);
-
-				*com = 10;
-				
 				*par = 0;
-				*even = 1;
+				*even = 1; //sets even to 1 to show no param field
 				*len = ftell(reader);
 
-				frames->command.payloader.command = *com;
+				frames->command.payloader.command = *com; 
 
 				free(com);
 				free(par);
@@ -428,11 +450,18 @@ int command_payload(char * x, struct mass_frame *frames, unsigned int *len, int 
 
 		}
 
-		if (*par > 32767 || *par < 0) //might need to bee 65535
+		if (*par > 65535 || *par < 0) //checks for valid values of an int if not free and return 0
 		{
+			free(com);
+			free(par);
+			free(str);
+
 			*len = ftell(reader);
+
+			fclose(reader);
+
 			printf("Parameter field is to high for a short\n");
-			break;
+			return 0;
 		}
 
 		*len = ftell(reader);
@@ -456,6 +485,12 @@ int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len)
 	FILE *reader;
 	reader = fopen(x, "r");
 
+	if (reader == NULL)
+	{
+		fprintf(stderr, "Error could not open file\n");
+		return 0;
+	}
+
 	char *str = malloc(SIZE);
 	char *buffer = malloc(SIZE);
 	char *check_buf = calloc(1, SIZE);
@@ -470,9 +505,10 @@ int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len)
 	{
 		if (sscanf(str, "Message: %s", check_buf))
 		{
+			//reads everything in fgets str buffer to buffer to store message
 			for (unsigned int i = 0; i < (strlen(str) - 9); i++)
 			{
-				buffer[i] = str[i + 9];
+				buffer[i] = str[i + 9]; //starts after message: 
 			}
 		}
 		else
@@ -504,7 +540,7 @@ int get_messagepayload(char * x, struct mass_frame *frames, unsigned int *len)
 
 int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte) //change name
 {
-	struct mass_frame frames;
+	struct mass_frame frames; //initializes struct and everything in it
 
 	memset(&frames, '\0', sizeof(frames));
 
@@ -530,13 +566,17 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 	writer = fopen(y, "w+");
 
-	*start = excess_headers + global_headers;
+	if (writer == NULL)
+	{
+		fprintf(stderr, "Error could not open file\n");
+		return 0;
+	}
+
+	*start = excess_headers + global_headers; //used to keep track of current place in encoding
 
 	*counter = 0;
 
 	int *even = malloc(sizeof(int));
-
-	*even = 10;
 
 	while (*len <= *max_byte)
 	{
@@ -550,12 +590,13 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 		fill(fake_buffer, writer, start, counter);
 
-		if (get_value(x, &frames, type_pt, len) != 1)
+		if (get_value(x, &frames, type_pt, len) != 1)//if anything but 1 is returned the exit
 		{
 			fprintf(stderr, "WOOOOOOOA get value error , non-encodable\n");
 			break;
 		}
 
+		//math to move start to correct place
 		*start = *start + global_headers;
 
 		*counter = *start;
@@ -570,7 +611,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 				break;
 			}
 
-			status_size = sizeof(frames.packet.printer); //12
+			status_size = sizeof(frames.packet.printer); //sets size of payload for total length
 			length = status_size;
 		}
 		else if (*type_pt == 1)
@@ -582,14 +623,14 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 				break;
 			}
 
-			if (*even == 1)
+			if (*even == 1) //if even only encode 2 bytes
 			{	
-				command_size = sizeof(frames.command.fields)/2; //12
+				command_size = sizeof(frames.command.fields)/2; //sets size of payload for total length
 				length = command_size;
 			}
-			else
+			else //if odd encode 4 bytes for command and param
 			{
-				command_size = sizeof(frames.command.fields); //12
+				command_size = sizeof(frames.command.fields); //sets size of payload for total length
 				length = command_size;
 			}
 
@@ -602,7 +643,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 				break;
 			}
 
-			gps_size = sizeof(frames.info.degrees); //12
+			gps_size = sizeof(frames.info.degrees); //sets size of payload for total length
 			length = gps_size;
 		}
 		else if (*type_pt == 3)
@@ -613,16 +654,33 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 				break;
 			}
 
-			message_size = strlen(frames.message.length) - 1; //12 , and minus one for the null byte
+			message_size = strlen(frames.message.length) - 1; //message size, and minus one for the null byte
 			length = message_size;
 
 		}
-		else
+		else //if type isnt one of the correct options the free and exit
 		{
-			break;
+			free(even);
+			free(len);
+			free(start);
+			free(counter);
+			free(frames.message.length);
+			fclose(writer);
+			fprintf(stderr, "Error type is not correct\n");
+			exit(1);
 		}
 
-		fwrite_func(length, type_pt, even, &frames, writer);
+		if (fwrite_func(length, type_pt, even, &frames, writer) != 1)
+		{
+			free(even);
+			free(len);
+			free(start);
+			free(counter);
+			free(frames.message.length);
+			fclose(writer);
+			fprintf(stderr, "Error type is not correct\n");
+			exit(1);
+		}
 	}
 
 	free(even);
@@ -642,7 +700,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 
 int fwrite_func(int length, unsigned int *type_pt, int * even, struct mass_frame *frames, FILE *writer)
 {
-
+	//used to change from big endian to litte endian and vice versa
 	frames->byte.data[0] = htons(frames->byte.data[0]);
 	frames->byte.data[1] = htons(frames->byte.data[1]);
 
@@ -651,15 +709,15 @@ int fwrite_func(int length, unsigned int *type_pt, int * even, struct mass_frame
 
 	int meditrik_size = 0;
 
-	meditrik_size = sizeof(frames->byte.data); //12
+	meditrik_size = sizeof(frames->byte.data); //determine meditrik size for total length
 
-	length = meditrik_size + length;
+	length = meditrik_size + length; //add the 2 to get total length to encode
 
 	frames->byte.medi.total_length = length;
 
-	frames->byte.data[1] = htons(frames->byte.data[1]);
+	frames->byte.data[1] = htons(frames->byte.data[1]); //used to get bytes for total length in correct order
 	
-	fwrite((frames)->byte.data, 2, 6, writer);
+	fwrite((frames)->byte.data, 2, 6, writer); //writes meditrik values
 
 	if(*type_pt == 0)
 	{
@@ -669,7 +727,7 @@ int fwrite_func(int length, unsigned int *type_pt, int * even, struct mass_frame
 
 		frames->packet.printer[6] = htons(frames->packet.printer[6]);
 
-		fwrite(frames->packet.printer, 2, sizeof(frames->packet.printer)/2, writer);
+		fwrite(frames->packet.printer, 2, sizeof(frames->packet.printer)/2, writer); //writes status of device bytes
 	}
 	else if (*type_pt == 1)
 	{
@@ -677,24 +735,28 @@ int fwrite_func(int length, unsigned int *type_pt, int * even, struct mass_frame
 
 		frames->command.fields[1] = htons(frames->command.fields[1]);
 
-		if  (*even == 1)
+		if  (*even == 1) //if command is even then write only command
 		{
-			fwrite(&frames->command.fields, 2, 1, writer);
+			fwrite(&frames->command.fields, 2, 1, writer); 
 		}
-		else
+		else //if command is odd then write command and param
 		{
 			fwrite(frames->command.fields, 2, (sizeof(frames->command.fields)/2), writer);
 		}
 	}
 	else if (*type_pt == 2)
 	{
-		fwrite(&frames->info.degrees, 20, 1, writer);
+		fwrite(&frames->info.degrees, 20, 1, writer); //write gps bytes
 	}
 	else if (*type_pt == 3)
 	{
 		size_t mes_len = strlen(frames->message.length);
 
-		fwrite(frames->message.length, (mes_len - 1), 1, writer);
+		fwrite(frames->message.length, (mes_len - 1), 1, writer); //writes message excluding last byte
+	}
+	else
+	{
+		return 0;
 	}
 
 	return 1;
