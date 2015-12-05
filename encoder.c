@@ -667,7 +667,7 @@ int write_func(char * x, char * y, unsigned int *type_pt, unsigned int *max_byte
 			free(frames.message.length);
 			fclose(writer);
 			fprintf(stderr, "Error type is not correct\n");
-			exit(1);
+			return 0;
 		}
 
 		if (fwrite_func(length, type_pt, even, &frames, writer) != 1)
